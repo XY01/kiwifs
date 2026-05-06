@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/kiwifs/kiwifs/internal/api"
+	"github.com/kiwifs/kiwifs/internal/claims"
 	"github.com/kiwifs/kiwifs/internal/comments"
 	"github.com/kiwifs/kiwifs/internal/config"
 	"github.com/kiwifs/kiwifs/internal/events"
@@ -58,6 +59,8 @@ type Stack struct {
 	JanitorSched        *janitor.Scheduler
 	Emitter             tracing.Emitter
 	WebhookDispatcher   *webhooks.Dispatcher
+	ClaimStore          *claims.Store
+	claimCancel         context.CancelFunc
 }
 
 func Build(name, root string, cfg *config.Config) (*Stack, error) {
@@ -108,6 +111,15 @@ func Build(name, root string, cfg *config.Config) (*Stack, error) {
 		idxJournal := filepath.Join(root, ".kiwi", "state", "unindexed.log")
 		idxOpts = append(idxOpts, pipeline.WithIndexJournal(idxJournal))
 		pipe.AsyncIdx = pipeline.NewAsyncIndexer(searcher, linker, vectors, idxOpts...)
+		if cbs, ok := searcher.(interface {
+			ComputeBlockedStatus(ctx context.Context) error
+		}); ok {
+			pipe.AsyncIdx.PostFlush = func(ctx context.Context) {
+				if err := cbs.ComputeBlockedStatus(ctx); err != nil {
+					log.Printf("%s_blocked reconciliation: %v", prefix, err)
+				}
+			}
+		}
 		log.Printf("%sasync indexing enabled (window=%dms)",
 			prefix, func() int {
 				if cfg.Search.IndexWindowMs > 0 {
@@ -118,6 +130,27 @@ func Build(name, root string, cfg *config.Config) (*Stack, error) {
 	}
 
 	pipe.OnInvalidate = func() { linkResolver.MarkDirty() }
+
+	// Always wire dependency re-indexing (independent of webhooks)
+	pipe.OnTransition = func(path, field, from, to, actor string) {
+		if field == "status" && (to == "done" || to == "cancelled") {
+			go func() {
+				if pipe.AsyncIdx != nil {
+					pipe.AsyncIdx.Flush()
+				}
+				reindexDependents(searcher, store, path)
+			}()
+		}
+	}
+
+	pipe.OnDelete = func(path, actor string) {
+		go func() {
+			if pipe.AsyncIdx != nil {
+				pipe.AsyncIdx.Flush()
+			}
+			reindexDependents(searcher, store, path)
+		}()
+	}
 
 	var webhookStore *webhooks.Store
 	var webhookDispatcher *webhooks.Dispatcher
@@ -138,6 +171,19 @@ func Build(name, root string, cfg *config.Config) (*Stack, error) {
 					Path:      path,
 					Actor:     actor,
 					Timestamp: time.Now().UTC().Format(time.RFC3339),
+				})
+			}
+			baseOnTransition := pipe.OnTransition
+			pipe.OnTransition = func(path, field, from, to, actor string) {
+				baseOnTransition(path, field, from, to, actor)
+				webhookDispatcher.Dispatch(context.Background(), webhooks.Event{
+					Type:      "transition",
+					Path:      path,
+					Actor:     actor,
+					Timestamp: time.Now().UTC().Format(time.RFC3339),
+					FromState: from,
+					ToState:   to,
+					Field:     field,
 				})
 			}
 			log.Printf("%swebhooks enabled", prefix)
@@ -161,6 +207,23 @@ func Build(name, root string, cfg *config.Config) (*Stack, error) {
 		log.Printf("%sschema validation enabled", prefix)
 	}
 
+	if cfg.Workflow.EnforceTransitions && len(cfg.Workflow.Transitions) > 0 {
+		transitions := cfg.Workflow.Transitions
+		pipe.ValidateTransition = func(path, from, to string) error {
+			allowed, ok := transitions[from]
+			if !ok {
+				return nil
+			}
+			for _, a := range allowed {
+				if a == to {
+					return nil
+				}
+			}
+			return fmt.Errorf("transition %q → %q not allowed (allowed: %v)", from, to, allowed)
+		}
+		log.Printf("%sworkflow transition enforcement enabled", prefix)
+	}
+
 	cstore, err := comments.New(root)
 	if err != nil {
 		if vectors != nil {
@@ -178,9 +241,35 @@ func Build(name, root string, cfg *config.Config) (*Stack, error) {
 
 	em := tracing.NewEmitter(cfg.Tracing.IsEnabled(), cfg.Tracing.Output, cfg.Tracing.File)
 
+	claimStore, cerr := claims.NewStoreFromRoot(root)
+	var claimCancel context.CancelFunc
+	if cerr != nil {
+		log.Printf("%sclaims disabled (%v)", prefix, cerr)
+		claimStore = nil
+	} else {
+		var claimCtx context.Context
+		claimCtx, claimCancel = context.WithCancel(context.Background())
+		go func() {
+			ticker := time.NewTicker(30 * time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ticker.C:
+					claimStore.ExpireStale(context.Background())
+				case <-claimCtx.Done():
+					return
+				}
+			}
+		}()
+		log.Printf("%sclaims enabled", prefix)
+	}
+
 	var serverOpts []api.ServerOption
 	if webhookStore != nil {
 		serverOpts = append(serverOpts, api.WithWebhookStore(webhookStore))
+	}
+	if claimStore != nil {
+		serverOpts = append(serverOpts, api.WithClaimStore(claimStore))
 	}
 	if schemaReload != nil {
 		serverOpts = append(serverOpts, api.WithSchemaReload(schemaReload))
@@ -220,6 +309,8 @@ func Build(name, root string, cfg *config.Config) (*Stack, error) {
 		JanitorSched:      janitorSched,
 		Emitter:           em,
 		WebhookDispatcher: webhookDispatcher,
+		ClaimStore:        claimStore,
+		claimCancel:       claimCancel,
 	}
 
 	pipe.DrainUncommitted(context.Background())
@@ -253,6 +344,14 @@ func (s *Stack) Close() error {
 	var firstErr error
 	if s.WebhookDispatcher != nil {
 		s.WebhookDispatcher.Close()
+	}
+	if s.claimCancel != nil {
+		s.claimCancel()
+	}
+	if s.ClaimStore != nil {
+		if err := s.ClaimStore.Close(); err != nil && firstErr == nil {
+			firstErr = err
+		}
 	}
 	// Flush async indexer before closing the searcher it writes to.
 	if s.Pipeline != nil && s.Pipeline.AsyncIdx != nil {
@@ -351,6 +450,37 @@ func (s *Stack) reindexIfEmpty() {
 	}
 	log.Printf("%svectorstore: reindexed %d files in %s",
 		prefix, count, time.Since(start).Round(time.Millisecond))
+}
+
+func reindexDependents(searcher search.Searcher, store storage.Storage, completedPath string) {
+	mi, ok := searcher.(interface {
+		IndexMeta(ctx context.Context, path string, content []byte) error
+	})
+	if !ok {
+		return
+	}
+	qm, ok := searcher.(interface {
+		QueryMetaOr(ctx context.Context, andFilters, orFilters []search.MetaFilter, sort string, limit, offset int) ([]search.MetaResult, error)
+	})
+	if !ok {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	results, err := qm.QueryMetaOr(ctx,
+		[]search.MetaFilter{{Field: "blocked-by[*]", Op: "=", Value: completedPath}},
+		nil, "", 0, 0)
+	if err != nil {
+		log.Printf("reindex dependents: query: %v", err)
+		return
+	}
+	for _, r := range results {
+		content, rerr := store.Read(ctx, r.Path)
+		if rerr != nil {
+			continue
+		}
+		mi.IndexMeta(ctx, r.Path, content)
+	}
 }
 
 func logPrefix(name string) string {

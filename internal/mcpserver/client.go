@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/kiwifs/kiwifs/internal/claims"
 )
 
 type RemoteBackend struct {
@@ -556,4 +558,69 @@ func (r *RemoteBackend) Eval(ctx context.Context, queries []EvalQuery) (*EvalRes
 		return nil, err
 	}
 	return &result, nil
+}
+
+func (r *RemoteBackend) Eligible(ctx context.Context, limit int, pathPrefix string) (*QueryResult, error) {
+	dql := fmt.Sprintf(
+		`TABLE _path, title, priority, assignee WHERE type = "task" AND status = "todo" AND _blocked = false SORT priority ASC, _updated ASC LIMIT %d`,
+		limit)
+	if pathPrefix != "" {
+		pathPrefix = sanitizePathPrefix(pathPrefix)
+		dql = fmt.Sprintf(
+			`TABLE _path, title, priority, assignee WHERE type = "task" AND status = "todo" AND _blocked = false AND _path LIKE "%s%%" SORT priority ASC, _updated ASC LIMIT %d`,
+			pathPrefix, limit)
+	}
+	var result QueryResult
+	q := fmt.Sprintf("%s/query?q=%s&limit=%d", r.apiPrefix, url.QueryEscape(dql), limit)
+	if err := r.getJSON(ctx, q, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (r *RemoteBackend) Claim(ctx context.Context, path, claimedBy string, leaseDuration time.Duration) (*claims.Claim, error) {
+	body := map[string]any{
+		"path":           path,
+		"lease_duration": leaseDuration.String(),
+	}
+	data, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := r.do(ctx, http.MethodPost, r.apiPrefix+"/claim",
+		strings.NewReader(string(data)), "Content-Type", "application/json", "X-Actor", claimedBy)
+	if err != nil {
+		return nil, err
+	}
+	respData, err := r.readBody(resp)
+	if err != nil {
+		return nil, err
+	}
+	var result claims.Claim
+	return &result, json.Unmarshal(respData, &result)
+}
+
+func (r *RemoteBackend) Release(ctx context.Context, path, claimedBy string) error {
+	body := map[string]any{"path": path}
+	data, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+	resp, err := r.do(ctx, http.MethodDelete, r.apiPrefix+"/claim",
+		strings.NewReader(string(data)), "Content-Type", "application/json", "X-Actor", claimedBy)
+	if err != nil {
+		return err
+	}
+	_, err = r.readBody(resp)
+	return err
+}
+
+func (r *RemoteBackend) ListClaims(ctx context.Context) ([]claims.Claim, error) {
+	var result struct {
+		Claims []claims.Claim `json:"claims"`
+	}
+	if err := r.getJSON(ctx, r.apiPrefix+"/claims", &result); err != nil {
+		return nil, err
+	}
+	return result.Claims, nil
 }

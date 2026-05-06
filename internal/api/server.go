@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/kiwifs/kiwifs/internal/claims"
 	"github.com/kiwifs/kiwifs/internal/comments"
 	"github.com/kiwifs/kiwifs/internal/config"
 	"github.com/kiwifs/kiwifs/internal/dataview"
@@ -37,6 +38,10 @@ func WithWebhookStore(store *webhooks.Store) ServerOption {
 	return func(s *Server) { s.webhookStore = store }
 }
 
+func WithClaimStore(store *claims.Store) ServerOption {
+	return func(s *Server) { s.claimStore = store }
+}
+
 func WithSchemaReload(fn func()) ServerOption {
 	return func(s *Server) { s.schemaReload = fn }
 }
@@ -52,6 +57,7 @@ type Server struct {
 	echo         *echo.Echo
 
 	webhookStore  *webhooks.Store
+	claimStore    *claims.Store
 	schemaReload  func()
 
 	janitorSched  *janitor.Scheduler
@@ -269,6 +275,7 @@ func (s *Server) setupRoutes() {
 		publicURL:            s.cfg.ResolvedPublicURL(),
 		linkResolver:         s.linkResolver,
 		webhookStore:         s.webhookStore,
+		claimStore:           s.claimStore,
 		schemaReload:         s.schemaReload,
 	}
 	prev := s.pipe.OnInvalidate
@@ -351,6 +358,10 @@ func (s *Server) setupRoutes() {
 	api.GET("/schemas", h.ListSchemas)
 	api.GET("/schemas/:type", h.GetSchema)
 	api.PUT("/schemas/:type", h.PutSchema)
+
+	api.POST("/claim", h.ClaimTask)
+	api.DELETE("/claim", h.ReleaseTask)
+	api.GET("/claims", h.ListClaims)
 
 	api.POST("/share", h.CreateShareLink)
 	api.GET("/share", h.ListShareLinks)

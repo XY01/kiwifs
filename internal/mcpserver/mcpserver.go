@@ -417,6 +417,36 @@ func registerTools(s *server.MCPServer, b Backend, opts Options) {
 			),
 			Handler: handleEval(b),
 		},
+		server.ServerTool{
+			Tool: mcp.NewTool("kiwi_eligible",
+				mcp.WithDescription("Find tasks eligible for work: unclaimed, unblocked, status=todo. Returns ranked by priority. Convenience wrapper over DQL."),
+				mcp.WithNumber("limit", mcp.Description("Max results, default 10")),
+				mcp.WithString("path_prefix", mcp.Description("Scope to subdirectory, e.g. tasks/")),
+				mcp.WithReadOnlyHintAnnotation(true),
+				mcp.WithDestructiveHintAnnotation(false),
+			),
+			Handler: handleEligible(b),
+		},
+		server.ServerTool{
+			Tool: mcp.NewTool("kiwi_claim",
+				mcp.WithDescription("Claim a task for exclusive work. Returns 409 if already claimed by another agent. Use lease_duration to set how long the claim lasts (default 30m)."),
+				mcp.WithString("path", mcp.Required(), mcp.Description("Path to task file")),
+				mcp.WithString("actor", mcp.Required(), mcp.Description("Agent identity for claim ownership — pass your unique session ID or name")),
+				mcp.WithString("lease_duration", mcp.Description("Lease duration (default 30m), e.g. 15m, 1h")),
+				mcp.WithDestructiveHintAnnotation(false),
+				mcp.WithIdempotentHintAnnotation(true),
+			),
+			Handler: handleClaim(b),
+		},
+		server.ServerTool{
+			Tool: mcp.NewTool("kiwi_release",
+				mcp.WithDescription("Release a previously claimed task so other agents can work on it."),
+				mcp.WithString("path", mcp.Required(), mcp.Description("Path to task file")),
+				mcp.WithString("actor", mcp.Required(), mcp.Description("Agent identity for claim ownership — must match the actor used when claiming")),
+				mcp.WithDestructiveHintAnnotation(false),
+			),
+			Handler: handleRelease(b),
+		},
 	)
 }
 
@@ -1706,6 +1736,95 @@ func handleEval(b Backend) server.ToolHandlerFunc {
 			fmt.Fprintf(&sb, "  FTS rank: %d, Semantic rank: %d\n", pq.FTSRank, pq.SemanticRank)
 		}
 		return mcp.NewToolResultText(sb.String()), nil
+	}
+}
+
+func handleEligible(b Backend) server.ToolHandlerFunc {
+	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := req.GetArguments()
+		limit := 10
+		if l, ok := args["limit"].(float64); ok && l > 0 {
+			limit = int(l)
+		}
+		pathPrefix, _ := args["path_prefix"].(string)
+
+		result, err := b.Eligible(ctx, limit, pathPrefix)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Eligible query failed: %v", err)), nil
+		}
+
+		if len(result.Rows) == 0 {
+			return mcp.NewToolResultText("No eligible tasks found."), nil
+		}
+
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "Eligible tasks (%d found):\n\n", len(result.Rows))
+		for i, row := range result.Rows {
+			path, _ := row["_path"].(string)
+			title, _ := row["title"].(string)
+			priority := row["priority"]
+			fmt.Fprintf(&sb, "%d. [P%v] %s — %s\n", i+1, priority, path, title)
+		}
+		return mcp.NewToolResultText(sb.String()), nil
+	}
+}
+
+func handleClaim(b Backend) server.ToolHandlerFunc {
+	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := req.GetArguments()
+		path, _ := args["path"].(string)
+		if path == "" {
+			return mcp.NewToolResultError("path is required"), nil
+		}
+
+		actor, _ := args["actor"].(string)
+		if actor == "" {
+			return mcp.NewToolResultError("actor is required — pass your agent name to identify claim ownership"), nil
+		}
+
+		lease := 30 * time.Minute
+		if d, ok := args["lease_duration"].(string); ok && d != "" {
+			parsed, err := time.ParseDuration(d)
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("invalid lease_duration: %v", err)), nil
+			}
+			lease = parsed
+		}
+		if lease < time.Minute {
+			lease = time.Minute
+		}
+		if lease > 24*time.Hour {
+			return mcp.NewToolResultError("lease_duration must be <= 24h"), nil
+		}
+
+		claim, err := b.Claim(ctx, path, actor, lease)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Claim failed: %v", err)), nil
+		}
+
+		data, _ := json.Marshal(claim)
+		return mcp.NewToolResultText(string(data)), nil
+	}
+}
+
+func handleRelease(b Backend) server.ToolHandlerFunc {
+	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := req.GetArguments()
+		path, _ := args["path"].(string)
+		if path == "" {
+			return mcp.NewToolResultError("path is required"), nil
+		}
+
+		actor, _ := args["actor"].(string)
+		if actor == "" {
+			return mcp.NewToolResultError("actor is required — pass your agent name to identify claim ownership"), nil
+		}
+
+		if err := b.Release(ctx, path, actor); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Release failed: %v", err)), nil
+		}
+
+		return mcp.NewToolResultText(fmt.Sprintf("Released claim on %s", path)), nil
 	}
 }
 

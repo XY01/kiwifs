@@ -31,12 +31,19 @@ type AsyncIndexer struct {
 	vectors  *vectorstore.Service
 
 	pending     chan indexReq
+	flushCh     chan chan struct{}
 	wg          sync.WaitGroup
 	stopOnce    sync.Once
 	stop        chan struct{}
 	batchWindow time.Duration
 	batchMax    int
 	journalPath string
+
+	// PostFlush, when set, is called after every batch flush with the
+	// context. Used by bootstrap to run computeBlockedStatus so _blocked
+	// is always reconciled against the complete file_meta state, not just
+	// the partial state visible when individual IndexMeta calls ran.
+	PostFlush func(ctx context.Context)
 }
 
 type IndexerOption func(*AsyncIndexer)
@@ -64,6 +71,7 @@ func NewAsyncIndexer(
 		linker:      linker,
 		vectors:     vectors,
 		pending:     make(chan indexReq, 2000),
+		flushCh:     make(chan chan struct{}, 1),
 		stop:        make(chan struct{}),
 		batchWindow: 200 * time.Millisecond,
 		batchMax:    100,
@@ -92,6 +100,16 @@ func (a *AsyncIndexer) EnqueueDelete(path string) {
 	a.journal(path)
 	select {
 	case a.pending <- indexReq{path: path, delete: true}:
+	case <-a.stop:
+	}
+}
+
+// Flush drains the current batch and blocks until all pending items are written.
+func (a *AsyncIndexer) Flush() {
+	done := make(chan struct{})
+	select {
+	case a.flushCh <- done:
+		<-done
 	case <-a.stop:
 	}
 }
@@ -155,6 +173,21 @@ func (a *AsyncIndexer) run() {
 
 		case <-timer.C:
 			flush()
+
+		case done := <-a.flushCh:
+			timer.Stop()
+			// Drain any pending items before flushing.
+			draining := true
+			for draining {
+				select {
+				case req := <-a.pending:
+					batch = append(batch, req)
+				default:
+					draining = false
+				}
+			}
+			flush()
+			close(done)
 
 		case <-a.stop:
 			for {
@@ -244,4 +277,8 @@ func (a *AsyncIndexer) flushBatch(batch []indexReq) {
 	}
 
 	log.Printf("async-indexer: flushed %d upserts + %d deletes", len(upserts), len(deletes))
+
+	if a.PostFlush != nil {
+		a.PostFlush(ctx)
+	}
 }

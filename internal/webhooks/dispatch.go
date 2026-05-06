@@ -3,17 +3,18 @@ package webhooks
 import (
 	"bytes"
 	"context"
-	"crypto/hmac"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
+
+	standardwebhooks "github.com/standard-webhooks/standard-webhooks/libraries/go"
 )
 
 type Event struct {
@@ -21,6 +22,9 @@ type Event struct {
 	Path      string `json:"path"`
 	Actor     string `json:"actor"`
 	Timestamp string `json:"timestamp"`
+	FromState string `json:"from_state,omitempty"`
+	ToState   string `json:"to_state,omitempty"`
+	Field     string `json:"field,omitempty"`
 }
 
 type Dispatcher struct {
@@ -73,7 +77,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, event Event) {
 	if d == nil {
 		return
 	}
-	matches, err := d.store.FindMatching(ctx, event.Path)
+	matches, err := d.store.FindMatching(ctx, event.Path, event.Type)
 	if err != nil {
 		log.Printf("webhooks: find matching: %v", err)
 		return
@@ -120,7 +124,7 @@ func (d *Dispatcher) deliver(job dispatchJob) {
 		return
 	}
 	msgID := generateMsgID()
-	ts := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -132,9 +136,13 @@ func (d *Dispatcher) deliver(job dispatchJob) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("webhook-id", msgID)
-	req.Header.Set("webhook-timestamp", ts)
+	req.Header.Set("webhook-timestamp", strconv.FormatInt(now.Unix(), 10))
 
-	sig := signPayload(job.webhook.Secret, msgID, ts, payload)
+	sig, err := signPayload(job.webhook.Secret, msgID, now, payload)
+	if err != nil {
+		log.Printf("webhooks: sign payload: %v", err)
+		return
+	}
 	req.Header.Set("webhook-signature", sig)
 
 	resp, err := d.client.Do(req)
@@ -175,13 +183,14 @@ func generateMsgID() string {
 	return "msg_" + hex.EncodeToString(b)
 }
 
-func signPayload(secret, msgID, timestamp string, payload []byte) string {
+func signPayload(secret, msgID string, timestamp time.Time, payload []byte) (string, error) {
 	key := []byte(secret)
 	if decoded, err := base64.StdEncoding.DecodeString(secret); err == nil {
 		key = decoded
 	}
-	content := fmt.Sprintf("%s.%s.%s", msgID, timestamp, string(payload))
-	mac := hmac.New(sha256.New, key)
-	mac.Write([]byte(content))
-	return "v1," + base64.StdEncoding.EncodeToString(mac.Sum(nil))
+	wh, err := standardwebhooks.NewWebhookRaw(key)
+	if err != nil {
+		return "", fmt.Errorf("create webhook signer: %w", err)
+	}
+	return wh.Sign(msgID, timestamp, payload)
 }

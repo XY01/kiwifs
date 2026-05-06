@@ -34,10 +34,51 @@ func (h *Handlers) Changes(c echo.Context) error {
 		limit = 500
 	}
 
+	changes, lastSeq, err := h.queryChanges(c, since, limit)
+	if err != nil {
+		return err
+	}
+
+	if c.QueryParam("feed") == "longpoll" && len(changes) == 0 && h.hub != nil {
+		timeout := 30 * time.Second
+		if t := c.QueryParam("timeout"); t != "" {
+			if d, perr := time.ParseDuration(t); perr == nil && d > 0 {
+				if d > 120*time.Second {
+					d = 120 * time.Second
+				}
+				timeout = d
+			}
+		}
+		ch, serr := h.hub.Subscribe()
+		if serr != nil {
+			return echo.NewHTTPError(http.StatusServiceUnavailable, "too many subscribers")
+		}
+		defer h.hub.Unsubscribe(ch)
+
+		select {
+		case <-ch:
+			changes, lastSeq, err = h.queryChanges(c, since, limit)
+			if err != nil {
+				return err
+			}
+		case <-time.After(timeout):
+			// return empty
+		case <-c.Request().Context().Done():
+			return nil
+		}
+	}
+
+	return c.JSON(http.StatusOK, changesResponse{
+		Changes: changes,
+		LastSeq: lastSeq,
+	})
+}
+
+func (h *Handlers) queryChanges(c echo.Context, since string, limit int) ([]changeEntry, string, error) {
 	var args []string
 	if since != "" {
 		if !isHexHash(since) {
-			return echo.NewHTTPError(http.StatusBadRequest, "unknown sequence")
+			return nil, "", echo.NewHTTPError(http.StatusBadRequest, "unknown sequence")
 		}
 		args = []string{"log", "--format=%H|%an|%at|%s", fmt.Sprintf("%s..HEAD", since), fmt.Sprintf("-%d", limit)}
 	} else {
@@ -51,12 +92,12 @@ func (h *Handlers) Changes(c echo.Context) error {
 	if err != nil {
 		exitErr, ok := err.(*exec.ExitError)
 		if ok && strings.Contains(string(exitErr.Stderr), "unknown revision") {
-			return echo.NewHTTPError(http.StatusBadRequest, "unknown sequence")
+			return nil, "", echo.NewHTTPError(http.StatusBadRequest, "unknown sequence")
 		}
 		if ok && strings.Contains(string(exitErr.Stderr), "does not have any commits") {
-			return c.JSON(http.StatusOK, changesResponse{Changes: []changeEntry{}, LastSeq: ""})
+			return []changeEntry{}, "", nil
 		}
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("git log: %v", err))
+		return nil, "", echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("git log: %v", err))
 	}
 
 	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
@@ -86,10 +127,7 @@ func (h *Handlers) Changes(c echo.Context) error {
 		lastSeq = changes[0].Seq
 	}
 
-	return c.JSON(http.StatusOK, changesResponse{
-		Changes: changes,
-		LastSeq: lastSeq,
-	})
+	return changes, lastSeq, nil
 }
 
 func parseCommitSubject(subject string) (action, path string) {

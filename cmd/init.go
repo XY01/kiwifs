@@ -25,7 +25,7 @@ var initCmd = &cobra.Command{
 
 func init() {
 	initCmd.Flags().StringP("root", "r", "./knowledge", "directory to initialize")
-	initCmd.Flags().String("template", "knowledge", "template: knowledge | wiki | runbook | research | blank")
+	initCmd.Flags().String("template", "knowledge", "template: knowledge | wiki | runbook | research | tasks | blank")
 }
 
 func runInit(cmd *cobra.Command, args []string) error {
@@ -37,7 +37,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 
 	switch template {
-	case "knowledge", "wiki", "runbook", "research":
+	case "knowledge", "wiki", "runbook", "research", "tasks":
 		if err := copyEmbedDir("templates/"+template, root); err != nil {
 			return err
 		}
@@ -46,7 +46,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	case "blank":
 		// just the directory
 	default:
-		return fmt.Errorf("unknown template %q (want knowledge | wiki | runbook | research | blank)", template)
+		return fmt.Errorf("unknown template %q (want knowledge | wiki | runbook | research | tasks | blank)", template)
 	}
 
 	kiwiDir := filepath.Join(root, ".kiwi")

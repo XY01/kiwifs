@@ -3,7 +3,18 @@ package mcpserver
 import (
 	"context"
 	"encoding/json"
+	"strings"
+	"time"
+
+	"github.com/kiwifs/kiwifs/internal/claims"
 )
+
+func sanitizePathPrefix(s string) string {
+	s = strings.ReplaceAll(s, `"`, "")
+	s = strings.ReplaceAll(s, `\`, "")
+	s = strings.ReplaceAll(s, `'`, "")
+	return s
+}
 
 type SearchResult struct {
 	Path    string  `json:"path"`
@@ -95,6 +106,10 @@ type Backend interface {
 	GraphAnalytics(ctx context.Context, limit int) (*GraphAnalyticsResult, error)
 	Velocity(ctx context.Context, period string, limit int, pathPrefix string) (*VelocityResult, error)
 	Eval(ctx context.Context, queries []EvalQuery) (*EvalResult, error)
+	Eligible(ctx context.Context, limit int, pathPrefix string) (*QueryResult, error)
+	Claim(ctx context.Context, path, claimedBy string, leaseDuration time.Duration) (*claims.Claim, error)
+	Release(ctx context.Context, path, claimedBy string) error
+	ListClaims(ctx context.Context) ([]claims.Claim, error)
 	PublicURL() string
 	Health(ctx context.Context) error
 	Close() error

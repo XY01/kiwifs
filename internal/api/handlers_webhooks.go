@@ -12,8 +12,9 @@ func (h *Handlers) CreateWebhook(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusServiceUnavailable, "webhooks not enabled")
 	}
 	var req struct {
-		URL      string `json:"url"`
-		PathGlob string `json:"path_glob"`
+		URL        string   `json:"url"`
+		PathGlob   string   `json:"path_glob"`
+		EventTypes []string `json:"event_types"`
 	}
 	if err := c.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request")
@@ -22,7 +23,7 @@ func (h *Handlers) CreateWebhook(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "url and path_glob are required")
 	}
 
-	wh, err := h.webhookStore.Register(c.Request().Context(), req.URL, req.PathGlob)
+	wh, err := h.webhookStore.Register(c.Request().Context(), req.URL, req.PathGlob, req.EventTypes...)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}

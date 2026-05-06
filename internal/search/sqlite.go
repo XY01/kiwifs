@@ -237,7 +237,11 @@ CREATE INDEX IF NOT EXISTS idx_meta_confidence ON file_meta(json_extract(frontma
 CREATE INDEX IF NOT EXISTS idx_meta_source_of_truth ON file_meta(json_extract(frontmatter, '$.source-of-truth'));
 CREATE INDEX IF NOT EXISTS idx_meta_reviewed ON file_meta(json_extract(frontmatter, '$.reviewed'));
 CREATE INDEX IF NOT EXISTS idx_meta_next_review ON file_meta(json_extract(frontmatter, '$.next-review'));
-CREATE INDEX IF NOT EXISTS idx_meta_visibility ON file_meta(json_extract(frontmatter, '$.visibility'));`
+CREATE INDEX IF NOT EXISTS idx_meta_visibility ON file_meta(json_extract(frontmatter, '$.visibility'));
+CREATE INDEX IF NOT EXISTS idx_meta_type ON file_meta(json_extract(frontmatter, '$.type'));
+CREATE INDEX IF NOT EXISTS idx_meta_priority ON file_meta(json_extract(frontmatter, '$.priority'));
+CREATE INDEX IF NOT EXISTS idx_meta_assignee ON file_meta(json_extract(frontmatter, '$.assignee'));
+CREATE INDEX IF NOT EXISTS idx_meta_claimed_by ON file_meta(json_extract(frontmatter, '$.claimed-by'));`
 	_, err := s.writeDB.ExecContext(ctx, ddl)
 	if err != nil {
 		return fmt.Errorf("create schema: %w", err)
@@ -621,6 +625,24 @@ func (s *SQLite) IndexMeta(ctx context.Context, path string, content []byte) err
 		}
 		fm["_quality_score"] = QualityScore(fm, daysSinceUpdate)
 	}
+	if blockedBy, ok := fm["blocked-by"].([]any); ok && len(blockedBy) > 0 {
+		blocked := false
+		for _, b := range blockedBy {
+			if bPath, ok := b.(string); ok {
+				var blockerStatus string
+				row := s.readDB.QueryRowContext(ctx,
+					`SELECT json_extract(frontmatter, '$.status') FROM file_meta WHERE path = ?`, bPath)
+				if row.Scan(&blockerStatus) == nil && blockerStatus != "done" && blockerStatus != "cancelled" {
+					blocked = true
+					break
+				}
+			}
+		}
+		fm["_blocked"] = blocked
+	} else {
+		fm["_blocked"] = false
+	}
+
 	for key, expr := range s.customComputedFields {
 		if v := EvalComputedField(expr, fm); v != nil {
 			fm[key] = v
@@ -1431,6 +1453,10 @@ func (s *SQLite) reindexLocked(ctx context.Context) (int, error) {
 		}
 	}
 
+	if err := s.computeBlockedStatus(ctx); err != nil {
+		log.Printf("kiwifs search: _blocked computation failed: %v", err)
+	}
+
 	return count, nil
 }
 
@@ -1447,6 +1473,45 @@ func (s *SQLite) updateBacklinkCounts(ctx context.Context) error {
 			    OR target_lc = LOWER(REPLACE(REPLACE(file_meta.path, RTRIM(file_meta.path, REPLACE(file_meta.path, '/', '')), ''), '.md', ''))))
 	`)
 	return err
+}
+
+// ComputeBlockedStatus sets _blocked for every file_meta row based on
+// whether any of its blocked-by dependencies have a non-terminal status.
+// Runs as a post-index SQL pass so all blocker statuses are available.
+// Exported so bootstrap can wire it as a PostFlush callback on the async
+// indexer, ensuring _blocked is reconciled after every batch regardless of
+// the order files were individually indexed.
+func (s *SQLite) ComputeBlockedStatus(ctx context.Context) error {
+	return s.computeBlockedStatus(ctx)
+}
+
+func (s *SQLite) computeBlockedStatus(ctx context.Context) error {
+	// Files with a blocked-by array: check if any blocker is non-terminal.
+	_, err := s.writeDB.ExecContext(ctx, `
+		UPDATE file_meta
+		SET frontmatter = json_set(frontmatter, '$._blocked',
+			CASE WHEN EXISTS (
+				SELECT 1 FROM json_each(json_extract(file_meta.frontmatter, '$.blocked-by')) AS dep
+				INNER JOIN file_meta AS blocker ON blocker.path = dep.value
+				WHERE json_extract(blocker.frontmatter, '$.status') NOT IN ('done', 'cancelled')
+			) THEN json('true') ELSE json('false') END
+		)
+		WHERE json_type(json_extract(frontmatter, '$.blocked-by')) = 'array'
+		  AND json_array_length(json_extract(frontmatter, '$.blocked-by')) > 0
+	`)
+	if err != nil {
+		return fmt.Errorf("compute _blocked (blocked files): %w", err)
+	}
+	// Files without blocked-by: always unblocked.
+	_, err = s.writeDB.ExecContext(ctx, `
+		UPDATE file_meta
+		SET frontmatter = json_set(frontmatter, '$._blocked', json('false'))
+		WHERE json_extract(frontmatter, '$._blocked') IS NULL
+	`)
+	if err != nil {
+		return fmt.Errorf("compute _blocked (unblocked files): %w", err)
+	}
+	return nil
 }
 
 // buildFTS5Query turns a user-supplied search string into a well-formed FTS5

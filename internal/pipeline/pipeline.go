@@ -17,6 +17,7 @@ import (
 
 	"github.com/kiwifs/kiwifs/internal/events"
 	"github.com/kiwifs/kiwifs/internal/links"
+	"github.com/kiwifs/kiwifs/internal/markdown"
 	"github.com/kiwifs/kiwifs/internal/search"
 	"github.com/kiwifs/kiwifs/internal/storage"
 	"github.com/kiwifs/kiwifs/internal/vectorstore"
@@ -66,6 +67,22 @@ type Pipeline struct {
 	// operation type, path, and actor. Used to dispatch webhook events.
 	OnWebhook func(op, path, actor string)
 
+	// OnTransition, when set, fires after a write that changes a tracked
+	// frontmatter field (currently "status"). Used to dispatch transition
+	// webhook events and re-resolve dependency graphs.
+	OnTransition func(path, field, fromState, toState, actor string)
+
+	// OnDelete, when set, fires after a file is deleted via the pipeline
+	// (REST DELETE, bulk, or observed fs deletion). Used to re-resolve
+	// dependency graphs for files whose blocked-by references the deleted
+	// path — without this, deleting a blocker leaves dependents stale.
+	OnDelete func(path, actor string)
+
+	// ValidateTransition, when set, is called before a write that would
+	// change a tracked frontmatter field. If it returns non-nil, the write
+	// is rejected (e.g. disallowed workflow transition).
+	ValidateTransition func(path, oldStatus, newStatus string) error
+
 	// ValidateWrite, when set, is called before writing content. If it
 	// returns a non-nil error, the write is rejected. Used for schema
 	// validation of frontmatter against JSON Schema definitions.
@@ -114,6 +131,14 @@ type Result struct {
 // holds at commit time. Mapped to HTTP 409 by the REST handler.
 var ErrConflict = fmt.Errorf("file modified since last read")
 
+// ErrTransitionDenied is returned when a workflow state transition is not
+// allowed by the configured transition rules. Mapped to HTTP 409.
+var ErrTransitionDenied = fmt.Errorf("transition denied")
+
+// ErrValidationFailed is returned when content fails schema validation.
+// Mapped to HTTP 422 by the REST handler.
+var ErrValidationFailed = fmt.Errorf("validation failed")
+
 // WriteOpts carries the optional knobs that don't fit Write's hot signature.
 // Today only IfMatch is set; new fields go here so callers don't churn.
 type WriteOpts struct {
@@ -136,6 +161,15 @@ func coalesce(actor string) string {
 		return DefaultActor
 	}
 	return actor
+}
+
+func extractStatus(content []byte) string {
+	fm, err := markdown.Frontmatter(content)
+	if err != nil || fm == nil {
+		return ""
+	}
+	s, _ := fm["status"].(string)
+	return s
 }
 
 // New builds a pipeline. Pass nil for optional dependencies (linker, hub, vectors).
@@ -541,9 +575,23 @@ func (p *Pipeline) WriteWithOpts(ctx context.Context, path string, content []byt
 	// If-Match: * means "match any existing representation" per RFC 7232 §3.1.
 	// We skip the ETag comparison — the precondition succeeds as long as the
 	// resource exists. For new files (create), * is a no-op.
+	var oldStatus string
+	if p.OnTransition != nil || p.ValidateTransition != nil {
+		if old, err := p.Store.Read(ctx, path); err == nil {
+			oldStatus = extractStatus(old)
+		}
+	}
+
+	newStatus := extractStatus(content)
+	if p.ValidateTransition != nil && oldStatus != "" && newStatus != "" && oldStatus != newStatus {
+		if err := p.ValidateTransition(path, oldStatus, newStatus); err != nil {
+			return Result{}, fmt.Errorf("%w: %v", ErrTransitionDenied, err)
+		}
+	}
+
 	if p.ValidateWrite != nil {
 		if err := p.ValidateWrite(path, content); err != nil {
-			return Result{}, err
+			return Result{}, fmt.Errorf("%w: %v", ErrValidationFailed, err)
 		}
 	}
 	// Mark before the disk write so the fsnotify event fires while the
@@ -558,6 +606,11 @@ func (p *Pipeline) WriteWithOpts(ctx context.Context, path string, content []byt
 	p.indexFile(ctx, path, content)
 	etag := ETag(content)
 	p.broadcast(events.Event{Op: "write", Path: path, Actor: actor, ETag: etag})
+
+	if p.OnTransition != nil && oldStatus != "" && newStatus != "" && oldStatus != newStatus {
+		p.OnTransition(path, "status", oldStatus, newStatus, actor)
+	}
+
 	return Result{Path: path, ETag: etag}, nil
 }
 
@@ -606,6 +659,9 @@ func (p *Pipeline) ObserveDelete(ctx context.Context, path, actor string) {
 	}
 	p.deindexFile(ctx, path)
 	p.broadcast(events.Event{Op: "delete", Path: path, Actor: actor})
+	if p.OnDelete != nil {
+		p.OnDelete(path, actor)
+	}
 }
 
 const maxFileSize = 64 * 1024 * 1024 // 64 MiB
@@ -633,7 +689,11 @@ func (p *Pipeline) Append(ctx context.Context, path, content, separator, actor s
 	}
 
 	var newContent []byte
+	var oldStatus string
 	if existing, err := p.Store.Read(ctx, path); err == nil && len(existing) > 0 {
+		if p.OnTransition != nil || p.ValidateTransition != nil {
+			oldStatus = extractStatus(existing)
+		}
 		newContent = append(existing, []byte(separator+content)...)
 	} else {
 		newContent = []byte(content)
@@ -643,9 +703,16 @@ func (p *Pipeline) Append(ctx context.Context, path, content, separator, actor s
 		return Result{}, fmt.Errorf("result exceeds %d-byte limit", maxFileSize)
 	}
 
+	newStatus := extractStatus(newContent)
+	if p.ValidateTransition != nil && oldStatus != "" && newStatus != "" && oldStatus != newStatus {
+		if err := p.ValidateTransition(path, oldStatus, newStatus); err != nil {
+			return Result{}, fmt.Errorf("%w: %v", ErrTransitionDenied, err)
+		}
+	}
+
 	if p.ValidateWrite != nil {
 		if err := p.ValidateWrite(path, newContent); err != nil {
-			return Result{}, err
+			return Result{}, fmt.Errorf("%w: %v", ErrValidationFailed, err)
 		}
 	}
 
@@ -657,6 +724,11 @@ func (p *Pipeline) Append(ctx context.Context, path, content, separator, actor s
 	p.indexFile(ctx, path, newContent)
 	etag := ETag(newContent)
 	p.broadcast(events.Event{Op: "write", Path: path, Actor: actor, ETag: etag})
+
+	if p.OnTransition != nil && oldStatus != "" && newStatus != "" && oldStatus != newStatus {
+		p.OnTransition(path, "status", oldStatus, newStatus, actor)
+	}
+
 	return Result{Path: path, ETag: etag}, nil
 }
 
@@ -681,7 +753,7 @@ func (p *Pipeline) BulkWrite(ctx context.Context, files []struct {
 	if p.ValidateWrite != nil {
 		for i, f := range files {
 			if err := p.ValidateWrite(f.Path, f.Content); err != nil {
-				return nil, fmt.Errorf("files[%d] (%s): %w", i, f.Path, err)
+				return nil, fmt.Errorf("%w: files[%d] (%s): %v", ErrValidationFailed, i, f.Path, err)
 			}
 		}
 	}
@@ -705,6 +777,24 @@ func (p *Pipeline) BulkWrite(ctx context.Context, files []struct {
 			}
 		}
 		preimages = append(preimages, pre)
+	}
+
+	if p.ValidateTransition != nil {
+		for i, f := range files {
+			newStatus := extractStatus(f.Content)
+			if newStatus == "" {
+				continue
+			}
+			var oldStatus string
+			if preimages[i].existed {
+				oldStatus = extractStatus(preimages[i].content)
+			}
+			if oldStatus != "" && newStatus != oldStatus {
+				if err := p.ValidateTransition(f.Path, oldStatus, newStatus); err != nil {
+					return nil, fmt.Errorf("%w: files[%d] (%s): %v", ErrTransitionDenied, i, f.Path, err)
+				}
+			}
+		}
 	}
 
 	rollback := func(upTo int) {
@@ -1076,6 +1166,9 @@ func (p *Pipeline) DeferredDelete(ctx context.Context, path, actor string) {
 	}
 	p.deindexFile(ctx, path)
 	p.broadcast(events.Event{Op: "delete", Path: path, Actor: actor})
+	if p.OnDelete != nil {
+		p.OnDelete(path, actor)
+	}
 }
 
 // Delete removes a file and fans out to versioner, searcher, linker, and
@@ -1103,6 +1196,9 @@ func (p *Pipeline) Delete(ctx context.Context, path, actor string) error {
 	}
 	p.deindexFile(ctx, path)
 	p.broadcast(events.Event{Op: "delete", Path: path, Actor: actor})
+	if p.OnDelete != nil {
+		p.OnDelete(path, actor)
+	}
 	return nil
 }
 
