@@ -76,7 +76,8 @@ func Walk(ctx context.Context, s Storage, root string, fn WalkFunc) error {
 // (currently: .md, not under .git/ or .kiwi/). Used by both the search
 // indexer and the vector store to decide what to index.
 func IsKnowledgeFile(path string) bool {
-	if !strings.HasSuffix(path, ".md") {
+	ext := strings.ToLower(filepath.Ext(path))
+	if ext != ".md" && ext != ".mdx" {
 		return false
 	}
 	clean := filepath.ToSlash(filepath.Clean(path))

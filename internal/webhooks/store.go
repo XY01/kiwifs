@@ -5,17 +5,19 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"time"
 )
 
 type Webhook struct {
-	ID        string `json:"id"`
-	URL       string `json:"url"`
-	PathGlob  string `json:"path_glob"`
-	Secret    string `json:"secret,omitempty"`
-	CreatedAt string `json:"created_at"`
-	Enabled   bool   `json:"enabled"`
+	ID         string   `json:"id"`
+	URL        string   `json:"url"`
+	PathGlob   string   `json:"path_glob"`
+	Secret     string   `json:"secret,omitempty"`
+	CreatedAt  string   `json:"created_at"`
+	Enabled    bool     `json:"enabled"`
+	EventTypes []string `json:"event_types,omitempty"`
 }
 
 type Store struct {
@@ -33,33 +35,46 @@ func NewStore(db *sql.DB) (*Store, error) {
 func (s *Store) createSchema() error {
 	_, err := s.db.Exec(`
 		CREATE TABLE IF NOT EXISTS webhooks (
-			id          TEXT PRIMARY KEY,
-			url         TEXT NOT NULL,
-			path_glob   TEXT NOT NULL,
-			secret      TEXT NOT NULL,
-			created_at  TEXT NOT NULL,
-			enabled     INTEGER NOT NULL DEFAULT 1
+			id           TEXT PRIMARY KEY,
+			url          TEXT NOT NULL,
+			path_glob    TEXT NOT NULL,
+			secret       TEXT NOT NULL,
+			created_at   TEXT NOT NULL,
+			enabled      INTEGER NOT NULL DEFAULT 1,
+			event_types  TEXT
 		)
 	`)
-	return err
+	if err != nil {
+		return err
+	}
+	s.db.Exec(`ALTER TABLE webhooks ADD COLUMN event_types TEXT`)
+	return nil
 }
 
-func (s *Store) Register(ctx context.Context, url, pathGlob string) (*Webhook, error) {
+func (s *Store) Register(ctx context.Context, url, pathGlob string, eventTypes ...string) (*Webhook, error) {
 	id := generateID()
 	secret := generateSecret()
 
 	wh := &Webhook{
-		ID:        id,
-		URL:       url,
-		PathGlob:  pathGlob,
-		Secret:    secret,
-		CreatedAt: time.Now().UTC().Format(time.RFC3339),
-		Enabled:   true,
+		ID:         id,
+		URL:        url,
+		PathGlob:   pathGlob,
+		Secret:     secret,
+		CreatedAt:  time.Now().UTC().Format(time.RFC3339),
+		Enabled:    true,
+		EventTypes: eventTypes,
+	}
+
+	var etJSON *string
+	if len(eventTypes) > 0 {
+		data, _ := json.Marshal(eventTypes)
+		s := string(data)
+		etJSON = &s
 	}
 
 	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO webhooks(id, url, path_glob, secret, created_at, enabled) VALUES (?, ?, ?, ?, ?, 1)`,
-		wh.ID, wh.URL, wh.PathGlob, wh.Secret, wh.CreatedAt,
+		`INSERT INTO webhooks(id, url, path_glob, secret, created_at, enabled, event_types) VALUES (?, ?, ?, ?, ?, 1, ?)`,
+		wh.ID, wh.URL, wh.PathGlob, wh.Secret, wh.CreatedAt, etJSON,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("register webhook: %w", err)
@@ -68,7 +83,7 @@ func (s *Store) Register(ctx context.Context, url, pathGlob string) (*Webhook, e
 }
 
 func (s *Store) List(ctx context.Context) ([]Webhook, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id, url, path_glob, created_at, enabled FROM webhooks`)
+	rows, err := s.db.QueryContext(ctx, `SELECT id, url, path_glob, created_at, enabled, event_types FROM webhooks`)
 	if err != nil {
 		return nil, err
 	}
@@ -78,10 +93,14 @@ func (s *Store) List(ctx context.Context) ([]Webhook, error) {
 	for rows.Next() {
 		var wh Webhook
 		var enabled int
-		if err := rows.Scan(&wh.ID, &wh.URL, &wh.PathGlob, &wh.CreatedAt, &enabled); err != nil {
+		var etJSON sql.NullString
+		if err := rows.Scan(&wh.ID, &wh.URL, &wh.PathGlob, &wh.CreatedAt, &enabled, &etJSON); err != nil {
 			return nil, err
 		}
 		wh.Enabled = enabled == 1
+		if etJSON.Valid && etJSON.String != "" {
+			_ = json.Unmarshal([]byte(etJSON.String), &wh.EventTypes)
+		}
 		out = append(out, wh)
 	}
 	if out == nil {
@@ -102,19 +121,36 @@ func (s *Store) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *Store) FindMatching(ctx context.Context, path string) ([]Webhook, error) {
+func (s *Store) FindMatching(ctx context.Context, path string, eventType ...string) ([]Webhook, error) {
 	all, err := s.List(ctx)
 	if err != nil {
 		return nil, err
+	}
+	et := ""
+	if len(eventType) > 0 {
+		et = eventType[0]
 	}
 	var matched []Webhook
 	for _, wh := range all {
 		if !wh.Enabled {
 			continue
 		}
-		if matchGlob(wh.PathGlob, path) {
-			matched = append(matched, wh)
+		if !matchGlob(wh.PathGlob, path) {
+			continue
 		}
+		if et != "" && len(wh.EventTypes) > 0 {
+			found := false
+			for _, t := range wh.EventTypes {
+				if t == et {
+					found = true
+					break
+				}
+			}
+			if !found {
+				continue
+			}
+		}
+		matched = append(matched, wh)
 	}
 	return matched, nil
 }

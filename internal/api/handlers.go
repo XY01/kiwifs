@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/kiwifs/kiwifs/internal/claims"
 	"github.com/kiwifs/kiwifs/internal/comments"
 	"github.com/kiwifs/kiwifs/internal/config"
 	"github.com/kiwifs/kiwifs/internal/dataview"
@@ -52,6 +53,7 @@ type Handlers struct {
 	memoryEpisodesPrefix string
 
 	webhookStore *webhooks.Store
+	claimStore   *claims.Store
 
 	schemaReload func()
 

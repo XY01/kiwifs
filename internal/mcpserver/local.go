@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/kiwifs/kiwifs/internal/bootstrap"
+	"github.com/kiwifs/kiwifs/internal/claims"
 	"github.com/kiwifs/kiwifs/internal/config"
 	"github.com/kiwifs/kiwifs/internal/dataview"
 	"github.com/kiwifs/kiwifs/internal/graphutil"
@@ -1381,4 +1382,53 @@ func (b *LocalBackend) Eval(ctx context.Context, queries []EvalQuery) (*EvalResu
 		},
 		PerQuery: perQuery,
 	}, nil
+}
+
+func (b *LocalBackend) Eligible(ctx context.Context, limit int, pathPrefix string) (*QueryResult, error) {
+	if err := b.init(); err != nil {
+		return nil, err
+	}
+	if limit <= 0 {
+		limit = 10
+	}
+	dql := fmt.Sprintf(
+		`TABLE _path, title, priority, assignee WHERE type = "task" AND status = "todo" AND _blocked = false SORT priority ASC, _updated ASC LIMIT %d`,
+		limit)
+	if pathPrefix != "" {
+		pathPrefix = sanitizePathPrefix(pathPrefix)
+		dql = fmt.Sprintf(
+			`TABLE _path, title, priority, assignee WHERE type = "task" AND status = "todo" AND _blocked = false AND _path LIKE "%s%%" SORT priority ASC, _updated ASC LIMIT %d`,
+			pathPrefix, limit)
+	}
+	return b.QueryDQL(ctx, dql, limit, 0)
+}
+
+func (b *LocalBackend) Claim(ctx context.Context, path, claimedBy string, leaseDuration time.Duration) (*claims.Claim, error) {
+	if err := b.init(); err != nil {
+		return nil, err
+	}
+	if b.stack.ClaimStore == nil {
+		return nil, fmt.Errorf("claims not enabled")
+	}
+	return b.stack.ClaimStore.Claim(ctx, path, claimedBy, leaseDuration)
+}
+
+func (b *LocalBackend) Release(ctx context.Context, path, claimedBy string) error {
+	if err := b.init(); err != nil {
+		return err
+	}
+	if b.stack.ClaimStore == nil {
+		return fmt.Errorf("claims not enabled")
+	}
+	return b.stack.ClaimStore.Release(ctx, path, claimedBy)
+}
+
+func (b *LocalBackend) ListClaims(ctx context.Context) ([]claims.Claim, error) {
+	if err := b.init(); err != nil {
+		return nil, err
+	}
+	if b.stack.ClaimStore == nil {
+		return nil, fmt.Errorf("claims not enabled")
+	}
+	return b.stack.ClaimStore.ListActive(ctx)
 }

@@ -3,8 +3,13 @@ package webhooks
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
+	"net/http"
+	"strconv"
 	"testing"
+	"time"
 
+	standardwebhooks "github.com/standard-webhooks/standard-webhooks/libraries/go"
 	_ "modernc.org/sqlite"
 )
 
@@ -62,6 +67,33 @@ func TestStoreDelete(t *testing.T) {
 	hooks, _ := store.List(ctx)
 	if len(hooks) != 0 {
 		t.Fatalf("expected 0 webhooks after delete, got %d", len(hooks))
+	}
+}
+
+func TestSignPayloadVerifiesWithStandardWebhooks(t *testing.T) {
+	rawKey := []byte("test-secret-key-for-webhooks1234")
+	b64Secret := base64.StdEncoding.EncodeToString(rawKey)
+
+	msgID := "msg_abc123"
+	now := time.Now().UTC()
+	payload := []byte(`{"type":"write","path":"pages/test.md"}`)
+
+	sig, err := signPayload(b64Secret, msgID, now, payload)
+	if err != nil {
+		t.Fatalf("signPayload: %v", err)
+	}
+
+	verifier, err := standardwebhooks.NewWebhookRaw(rawKey)
+	if err != nil {
+		t.Fatalf("NewWebhookRaw: %v", err)
+	}
+	headers := http.Header{}
+	headers.Set("webhook-id", msgID)
+	headers.Set("webhook-timestamp", strconv.FormatInt(now.Unix(), 10))
+	headers.Set("webhook-signature", sig)
+
+	if err := verifier.Verify(payload, headers); err != nil {
+		t.Fatalf("standard-webhooks verification failed: %v", err)
 	}
 }
 
