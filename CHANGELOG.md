@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.5.0](https://github.com/kiwifs/kiwifs/compare/v0.4.1...v0.5.0) (2026-05-06)
+
+
+### Features
+
+* agent-ready infrastructure — claims, workflows, webhooks, _blocked ([722de40](https://github.com/kiwifs/kiwifs/commit/722de40c188cba401ada9dd6e933315b4410b89a))
+* agent-ready infrastructure — claims, workflows, webhooks, _blocked ([6150d6e](https://github.com/kiwifs/kiwifs/commit/6150d6ecccd71a596c6867112d78af8aad6bc39d))
+* ML & analytics features — 10 new capabilities ([6cefa7c](https://github.com/kiwifs/kiwifs/commit/6cefa7c804f0fb4795c36351fe14cc3f755c8547))
+* ML & analytics features — 10 new capabilities ([275b25b](https://github.com/kiwifs/kiwifs/commit/275b25b888dc47300bf996b075dc381aa2dd5f92))
+* protect HTTP MCP endpoint with API key auth ([#34](https://github.com/kiwifs/kiwifs/issues/34)) ([fdd6dac](https://github.com/kiwifs/kiwifs/commit/fdd6dac5f172bf8077ce1f350a8ee9b25b5a4114))
+* render Mermaid diagrams in Markdown pages ([6300dae](https://github.com/kiwifs/kiwifs/commit/6300dae7818acadaebb72422d3856a0ce00da2ad))
+* render Mermaid diagrams in Markdown pages ([9cbe657](https://github.com/kiwifs/kiwifs/commit/9cbe657d10517f321fb8fb0bb20db403faa322a6))
+* template consolidation, kiwi_context, UI updates, doc fixes ([06585d8](https://github.com/kiwifs/kiwifs/commit/06585d89db748a8bb60ef56cccb022a8496f43af))
+* template consolidation, kiwi_context, UI updates, doc fixes ([#36](https://github.com/kiwifs/kiwifs/issues/36)) ([e35d2a1](https://github.com/kiwifs/kiwifs/commit/e35d2a108ee0e8f539d33c7bae97e3886e065e6c))
+* X-Kiwi-Space header dispatch + config-file spaces ([05b442d](https://github.com/kiwifs/kiwifs/commit/05b442de3556e6874be828bc0176ab446bbd7455))
+
+
+### Bug Fixes
+
+* extract MermaidDiagram, add dark mode reactivity and Storybook stories ([5313577](https://github.com/kiwifs/kiwifs/commit/53135775e3185b4087b0d592072d79dbbc5ef144))
+
 ## [0.4.1](https://github.com/kiwifs/kiwifs/compare/v0.4.0...v0.4.1) (2026-05-02)
 
 
