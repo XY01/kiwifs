@@ -100,6 +100,64 @@ func TestResolveSpaceByName(t *testing.T) {
 	}
 }
 
+func TestResolveSpaceByHeader(t *testing.T) {
+	m := NewManager(nil)
+	dir1 := t.TempDir()
+	dir2 := t.TempDir()
+	m.AddSpace("alpha", dir1, minimalCfg())
+	m.AddSpace("beta", dir2, minimalCfg())
+	defer m.Close()
+
+	r := &http.Request{
+		Header: http.Header{"X-Kiwi-Space": []string{"beta"}},
+		URL:    &url.URL{Path: "/api/kiwi/tree"},
+	}
+	sp := m.resolveSpace(r)
+	if sp == nil || sp.Name != "beta" {
+		t.Fatalf("resolveSpace(X-Kiwi-Space: beta) = %v, want beta", sp)
+	}
+	if r.URL.Path != "/api/kiwi/tree" {
+		t.Fatalf("header dispatch should not rewrite path, got %s", r.URL.Path)
+	}
+}
+
+func TestResolveSpaceHeaderTakesPrecedence(t *testing.T) {
+	m := NewManager(nil)
+	dir1 := t.TempDir()
+	dir2 := t.TempDir()
+	m.AddSpace("alpha", dir1, minimalCfg())
+	m.AddSpace("beta", dir2, minimalCfg())
+	defer m.Close()
+
+	// Path says "alpha" but header says "beta" — header wins.
+	r := &http.Request{
+		Header: http.Header{"X-Kiwi-Space": []string{"beta"}},
+		URL:    &url.URL{Path: "/api/kiwi/alpha/tree"},
+	}
+	sp := m.resolveSpace(r)
+	if sp == nil || sp.Name != "beta" {
+		t.Fatalf("header should take precedence over path, got %v", sp)
+	}
+}
+
+func TestResolveSpaceHeaderUnknownFallsToPath(t *testing.T) {
+	m := NewManager(nil)
+	dir1 := t.TempDir()
+	dir2 := t.TempDir()
+	m.AddSpace("alpha", dir1, minimalCfg())
+	m.AddSpace("beta", dir2, minimalCfg())
+	defer m.Close()
+
+	r := &http.Request{
+		Header: http.Header{"X-Kiwi-Space": []string{"nonexistent"}},
+		URL:    &url.URL{Path: "/api/kiwi/beta/tree"},
+	}
+	sp := m.resolveSpace(r)
+	if sp == nil || sp.Name != "beta" {
+		t.Fatalf("unknown header should fall through to path, got %v", sp)
+	}
+}
+
 func TestResolveSpaceTrailingSlash(t *testing.T) {
 	m := NewManager(nil)
 	dir := t.TempDir()

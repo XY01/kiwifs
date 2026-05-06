@@ -378,12 +378,25 @@ func (m *Manager) Handler() http.Handler {
 	return e
 }
 
-// resolveSpace picks the target space from the URL. If the path matches
-// /api/kiwi/{space}/... and {space} is a registered name, the request URL
-// is rewritten to strip the space segment so the downstream api.Server
-// sees normal /api/kiwi/... routes. Unmatched paths fall through to the
-// first registered (default) space.
+// resolveSpace picks the target space for an incoming request.
+//
+// Resolution order:
+//  1. X-Kiwi-Space header — set by a reverse proxy (e.g. Caddy extracting
+//     the subdomain from team-abc.kiwifs.com). No path rewrite needed
+//     because the request already carries normal /api/kiwi/... paths.
+//  2. URL path prefix — /api/kiwi/{space}/... where {space} is a registered
+//     name. The space segment is stripped so the downstream api.Server sees
+//     standard /api/kiwi/... routes.
+//  3. Default — first registered space (deterministic via m.order).
 func (m *Manager) resolveSpace(r *http.Request) *Space {
+	// 1. Header-based dispatch (subdomain routing via reverse proxy).
+	if hdr := r.Header.Get("X-Kiwi-Space"); hdr != "" {
+		if space, ok := m.GetSpace(hdr); ok {
+			return space
+		}
+	}
+
+	// 2. Path-based dispatch: /api/kiwi/{space}/...
 	path := r.URL.Path
 	const prefix = "/api/kiwi/"
 	if strings.HasPrefix(path, prefix) {
@@ -401,7 +414,8 @@ func (m *Manager) resolveSpace(r *http.Request) *Space {
 			}
 		}
 	}
-	// Default: first registered space. Using m.order (not a bare map
+
+	// 3. Default: first registered space. Using m.order (not a bare map
 	// iteration) keeps the default deterministic — otherwise every
 	// restart could route "/api/kiwi/..." to a different space.
 	m.mu.RLock()

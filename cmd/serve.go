@@ -255,6 +255,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 	if err := spaceMgr.RegisterStack("default", root, stack); err != nil {
 		return fmt.Errorf("register default space: %w", err)
 	}
+	// Register spaces from --space CLI flags.
 	for _, spec := range spaceSpecs {
 		name, spacePath, ok := strings.Cut(spec, "=")
 		name = strings.TrimSpace(name)
@@ -269,6 +270,26 @@ func runServe(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("add space %q: %w", name, err)
 		}
 		log.Printf("space %q mounted at /api/kiwi/%s → %s", name, name, spacePath)
+	}
+
+	// Register spaces from [[spaces]] in config.toml. Entries that
+	// duplicate a --space flag are silently skipped so operators can
+	// migrate from CLI to config without a conflict on restart.
+	for _, sc := range cfg.Spaces {
+		if sc.Name == "" || sc.Root == "" {
+			log.Printf("warning: ignoring spaces entry with empty name or root")
+			continue
+		}
+		if _, exists := spaceMgr.GetSpace(sc.Name); exists {
+			continue
+		}
+		sub := *cfg
+		sub.Storage.Root = sc.Root
+		filtered := spaces.FilterKeysForSpace(&sub, sc.Name)
+		if err := spaceMgr.AddSpace(sc.Name, sc.Root, filtered); err != nil {
+			return fmt.Errorf("add config space %q: %w", sc.Name, err)
+		}
+		log.Printf("space %q mounted at /api/kiwi/%s → %s (from config.toml)", sc.Name, sc.Name, sc.Root)
 	}
 	defer spaceMgr.Close()
 	mgrHandler := spaceMgr.Handler()
