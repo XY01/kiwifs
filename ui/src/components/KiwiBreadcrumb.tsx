@@ -6,8 +6,8 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import { breadcrumbs } from "@/lib/paths";
+} from "./ui/breadcrumb";
+import { breadcrumbs } from "../lib/paths";
 
 type Props = {
   path: string;

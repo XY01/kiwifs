@@ -17,16 +17,16 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { cn } from "@/lib/cn";
-import { api, type TreeEntry } from "@/lib/api";
-import { isMarkdown, stem, stripTrailingSlash } from "@/lib/paths";
+import { cn } from "../lib/cn";
+import { api, type TreeEntry } from "../lib/api";
+import { isMarkdown, stem, stripTrailingSlash } from "../lib/paths";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
-} from "@/components/ui/context-menu";
+} from "./ui/context-menu";
 import {
   Dialog,
   DialogContent,
@@ -34,10 +34,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "./ui/dialog";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
 
 type Props = {
   activePath: string | null;

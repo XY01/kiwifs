@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import GithubSlugger from "github-slugger";
-import { cn } from "@/lib/cn";
-import { Button } from "@/components/ui/button";
+import { cn } from "../lib/cn";
+import { Button } from "./ui/button";
 
 type Heading = { id: string; text: string; depth: number };
 

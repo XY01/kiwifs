@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Tag } from "lucide-react";
-import { api } from "@/lib/api";
-import { titleize } from "@/lib/paths";
-import { Badge } from "@/components/ui/badge";
+import { api } from "../lib/api";
+import { titleize } from "../lib/paths";
+import { Badge } from "./ui/badge";
 
 type TagInfo = { tag: string; count: number; paths: string[] };
 

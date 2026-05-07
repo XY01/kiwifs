@@ -11,9 +11,9 @@ import matter from "gray-matter";
 import Zoom from "react-medium-image-zoom";
 import "react-medium-image-zoom/dist/styles.css";
 import { AlertTriangle, BookOpen, Calendar, CheckSquare, ChevronDown, ChevronRight, Edit, FileAxis3D, FileQuestion, History as HistoryIcon, Link2, List, MessageSquareQuote, Pin, Plus, Star, Tag, Type, User } from "lucide-react";
-import { api, type TreeEntry } from "@/lib/api";
-import { titleize } from "@/lib/paths";
-import { readingTime } from "@/lib/readingTime";
+import { api, type TreeEntry } from "../lib/api";
+import { titleize } from "../lib/paths";
+import { readingTime } from "../lib/readingTime";
 import { KiwiBreadcrumb } from "./KiwiBreadcrumb";
 import { KiwiToC } from "./KiwiToC";
 import { KiwiBacklinks } from "./KiwiBacklinks";
@@ -26,9 +26,9 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import { MermaidDiagram } from "./MermaidDiagram";
 import { PageSkeleton } from "./PageSkeleton";
 import { trackRecent } from "./KiwiFavorites";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { buildResolver, remarkWikiLinks } from "@/lib/wikiLinks";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import { buildResolver, remarkWikiLinks } from "../lib/wikiLinks";
 
 type Props = {
   path: string;

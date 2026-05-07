@@ -22,25 +22,25 @@ import {
 } from "@react-sigma/core";
 import { ArrowLeft, Loader2, Search as SearchIcon, Tag } from "lucide-react";
 import "@react-sigma/core/lib/style.css";
-import { api, type GraphResponse, type TreeEntry } from "@/lib/api";
-import { buildResolver } from "@/lib/wikiLinks";
-import { titleize } from "@/lib/paths";
-import { cn } from "@/lib/cn";
+import { api, type GraphResponse, type TreeEntry } from "../lib/api";
+import { buildResolver } from "../lib/wikiLinks";
+import { titleize } from "../lib/paths";
+import { cn } from "../lib/cn";
 import {
   colorForGraphCommunity,
   readKiwiGraphTheme,
   type KiwiGraphTheme,
-} from "@/lib/kiwiGraphTheme";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+} from "../lib/kiwiGraphTheme";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import { Input } from "./ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "./ui/select";
 
 type Props = {
   tree: TreeEntry | null;

@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import ReactDiffViewer, { DiffMethod } from "react-diff-viewer-continued";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { GitBranch, History, RotateCcw, User, X } from "lucide-react";
-import { api, type BlameLine, type Version } from "@/lib/api";
-import { titleize } from "@/lib/paths";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
+import { api, type BlameLine, type Version } from "../lib/api";
+import { titleize } from "../lib/paths";
+import { Button } from "./ui/button";
+import { ScrollArea } from "./ui/scroll-area";
+import { Separator } from "./ui/separator";
 
 type ViewMode = "diff" | "blame";
 
@@ -161,7 +161,7 @@ export function KiwiHistory({ path, onClose, onRestored }: Props) {
           <span className="text-xs text-muted-foreground font-mono truncate">
             {path}
           </span>
-          <Separator orientation="vertical" className="h-4 mx-1" />
+          <div className="h-4 mx-1"><Separator orientation="vertical" /></div>
           <div className="flex items-center gap-1">
             <Button
               variant={viewMode === "diff" ? "secondary" : "ghost"}
@@ -317,7 +317,7 @@ export function KiwiHistory({ path, onClose, onRestored }: Props) {
                   <span className="ml-2">(initial commit)</span>
                 )}
               </div>
-              <Separator className="mb-3" />
+              <div className="mb-3"><Separator /></div>
               <div className="text-sm">
                 <ReactDiffViewer
                   oldValue={oldContent}
