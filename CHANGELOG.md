@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/kiwifs/kiwifs/compare/v0.6.0...v0.7.0) (2026-05-08)
+
+
+### Features
+
+* draft spaces — git-backed agent staging with isolated worktrees ([83b046b](https://github.com/kiwifs/kiwifs/commit/83b046bbcc3083d8d8f6e5f1a92db7db296491c4))
+
 ## [0.6.0](https://github.com/kiwifs/kiwifs/compare/v0.5.1...v0.6.0) (2026-05-08)
 
 
