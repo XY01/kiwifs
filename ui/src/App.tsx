@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Check,
   ChevronDown,
   ChevronRight,
   Clock,
@@ -9,7 +8,6 @@ import {
   History,
   Moon,
   Network,
-  Palette,
   PanelLeftClose,
   PanelLeftOpen,
   Pin,
@@ -24,7 +22,6 @@ import { KiwiEditor } from "./components/KiwiEditor";
 import { KiwiSearch } from "./components/KiwiSearch";
 import { KiwiGraph } from "./components/KiwiGraph";
 import { KiwiHistory } from "./components/KiwiHistory";
-import { KiwiThemeEditor } from "./components/KiwiThemeEditor";
 import { NewPageDialog } from "./components/NewPageDialog";
 import { KeyboardShortcuts } from "./components/KeyboardShortcuts";
 import { SpaceSelector } from "./components/SpaceSelector";
@@ -33,11 +30,6 @@ import { useStarredPages } from "./hooks/useStarredPages";
 import { usePinnedPages } from "./hooks/usePinnedPages";
 import { titleize } from "./lib/paths";
 import { Button } from "./components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "./components/ui/popover";
 import {
   Tooltip,
   TooltipContent,
@@ -48,9 +40,20 @@ import { api, getCurrentSpace, setCurrentSpace, sseUrl, type TreeEntry } from ".
 import { useTheme } from "./hooks/useTheme";
 import { isMarkdown } from "./lib/paths";
 
+function getInitialActivePath(): string | null {
+  if (typeof window === "undefined") return null;
+  const pathname = window.location.pathname;
+  const hash = window.location.hash.replace(/^#\/?/, "");
+  const raw = pathname.startsWith("/page/")
+    ? decodeURIComponent(pathname.slice("/page/".length))
+    : hash;
+  return raw || null;
+}
+
 export default function App() {
   const [tree, setTree] = useState<TreeEntry | null>(null);
-  const [activePath, setActivePath] = useState<string | null>(null);
+  const [activePath, setActivePath] = useState<string | null>(getInitialActivePath);
+  const [treeLoading, setTreeLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -60,7 +63,6 @@ export default function App() {
   const [graphOpen, setGraphOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const [themeEditorOpen, setThemeEditorOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -80,8 +82,7 @@ export default function App() {
     } catch { return 272; }
   });
   const resizing = useRef(false);
-  const { theme, toggleTheme, preset, setPreset, presets: themePresets } = useTheme();
-  const [themeLocked, setThemeLocked] = useState(false);
+  const { theme, toggleTheme } = useTheme();
   const currentSpace = getCurrentSpace() || "default";
   const { recent, recordVisit } = useRecentPages(currentSpace);
   const { starred, toggle: toggleStar, isStarred } = useStarredPages(currentSpace);
@@ -94,7 +95,8 @@ export default function App() {
     api
       .tree("/")
       .then((t) => setTree(t))
-      .catch(() => setTree(null));
+      .catch(() => setTree(null))
+      .finally(() => setTreeLoading(false));
   }, [refreshKey]);
 
   useEffect(() => {
@@ -136,11 +138,7 @@ export default function App() {
 
   const [spaceKey, setSpaceKey] = useState(0);
 
-  useEffect(() => {
-    api.getUIConfig().then((c) => setThemeLocked(c.themeLocked)).catch(() => {});
-  }, [spaceKey]);
-
-  const handleSpaceSwitch = useCallback(() => {
+const handleSpaceSwitch = useCallback(() => {
     setActivePath(null);
     setEditing(false);
     setGraphOpen(false);
@@ -317,62 +315,9 @@ export default function App() {
             >
               <History className="h-4 w-4" />
             </ToolbarButton>
-            {themeLocked ? (
-              <ToolbarButton onClick={toggleTheme} label={theme === "dark" ? "Light mode" : "Dark mode"}>
-                {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </ToolbarButton>
-            ) : (
-              <Popover>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <PopoverTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Theme">
-                        <Palette className="h-4 w-4" />
-                      </Button>
-                    </PopoverTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">Theme</TooltipContent>
-                </Tooltip>
-                <PopoverContent align="end" className="w-48 p-1">
-                  {themePresets.map((p) => {
-                    const swatchColor = theme === "dark"
-                      ? (p.dark.primary || p.light.primary || "hsl(0 0% 50%)")
-                      : (p.light.primary || "hsl(0 0% 50%)");
-                    return (
-                      <button
-                        key={p.name}
-                        onClick={() => setPreset(p.name)}
-                        className="flex items-center gap-2 w-full rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                      >
-                        <span
-                          className="h-4 w-4 rounded-full shrink-0 border border-border ring-1 ring-inset ring-white/20"
-                          style={{ background: swatchColor }}
-                        />
-                        <span className="flex-1 text-left">{p.name}</span>
-                        {preset === p.name && <Check className="h-3.5 w-3.5 text-primary" />}
-                      </button>
-                    );
-                  })}
-                  <div className="h-px bg-border my-1" />
-                  <button
-                    onClick={() => setThemeEditorOpen(true)}
-                    className="flex items-center gap-2 w-full rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground text-muted-foreground"
-                  >
-                    Customize…
-                  </button>
-                  <div className="h-px bg-border my-1" />
-                  <button
-                    onClick={toggleTheme}
-                    className="flex items-center gap-2 w-full rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                  >
-                    {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-                    <span className="flex-1 text-left">
-                      {theme === "dark" ? "Light mode" : "Dark mode"}
-                    </span>
-                  </button>
-                </PopoverContent>
-              </Popover>
-            )}
+            <ToolbarButton onClick={toggleTheme} label={theme === "dark" ? "Light mode" : "Dark mode"}>
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </ToolbarButton>
           </div>
         </header>
 
@@ -510,12 +455,7 @@ export default function App() {
 
           {/* Main content area */}
           <main className="flex-1 overflow-auto kiwi-scroll relative">
-            {themeEditorOpen ? (
-              <KiwiThemeEditor
-                onClose={() => setThemeEditorOpen(false)}
-                onPresetReset={() => setPreset(preset)}
-              />
-            ) : graphOpen ? (
+            {graphOpen ? (
               <KiwiGraph
                 tree={tree}
                 activePath={activePath}
@@ -572,6 +512,10 @@ export default function App() {
                 }}
                 refreshKey={refreshKey}
               />
+            ) : treeLoading ? (
+              <div className="flex h-full items-center justify-center">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              </div>
             ) : (
               <WelcomeScreen
                 onNewPage={() => { setNewFolder(undefined); setNewOpen(true); }}

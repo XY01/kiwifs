@@ -76,6 +76,7 @@ export function useTheme(): {
     if (theme === "dark") root.classList.add("dark");
     else root.classList.remove("dark");
     writeLS(LS_THEME, theme);
+    writeLS("app-theme", theme);
   }, [theme]);
 
   // On mount, fetch the server-side team default theme. localStorage preset
