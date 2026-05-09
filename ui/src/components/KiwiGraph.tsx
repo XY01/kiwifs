@@ -180,17 +180,17 @@ export function KiwiGraph({ tree, activePath, onNavigate, onClose }: Props) {
 
   return (
     <div className="h-full w-full flex flex-col relative">
-      <div className="flex items-center gap-3 px-6 py-3 border-b border-border bg-card">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-3 sm:px-6 py-3 border-b border-border bg-card">
         <Button variant="outline" size="sm" onClick={onClose}>
-          <ArrowLeft className="h-3.5 w-3.5" /> Back
+          <ArrowLeft className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Back</span>
         </Button>
         <div className="font-semibold text-sm">Knowledge graph</div>
-        <div className="text-xs text-muted-foreground">
+        <div className="text-xs text-muted-foreground hidden sm:block">
           {built
             ? `${built.graph.order} pages · ${built.graph.size} links`
             : null}
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2 flex-wrap">
           <div className="relative">
             <SearchIcon className="h-3.5 w-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
             <Input
@@ -198,7 +198,7 @@ export function KiwiGraph({ tree, activePath, onNavigate, onClose }: Props) {
               placeholder="Highlight…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="h-8 pl-7 w-48 text-sm"
+              className="h-8 pl-7 w-32 sm:w-48 text-sm"
             />
           </div>
           {built && built.dirs.length > 1 && (
@@ -206,7 +206,7 @@ export function KiwiGraph({ tree, activePath, onNavigate, onClose }: Props) {
               value={dirFilter || "__all__"}
               onValueChange={(v) => setDirFilter(v === "__all__" ? "" : v)}
             >
-              <SelectTrigger className="h-8 w-44 text-sm">
+              <SelectTrigger className="h-8 w-32 sm:w-44 text-sm">
                 <SelectValue placeholder="All folders" />
               </SelectTrigger>
               <SelectContent>
@@ -224,7 +224,7 @@ export function KiwiGraph({ tree, activePath, onNavigate, onClose }: Props) {
               value={tagFilter || "__all__"}
               onValueChange={(v) => setTagFilter(v === "__all__" ? "" : v)}
             >
-              <SelectTrigger className="h-8 w-44 text-sm">
+              <SelectTrigger className="h-8 w-32 sm:w-44 text-sm">
                 <Tag className="h-3 w-3 mr-1" />
                 <SelectValue placeholder="All tags" />
               </SelectTrigger>

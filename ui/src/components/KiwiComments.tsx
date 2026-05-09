@@ -223,7 +223,7 @@ export function KiwiComments({ path, containerRef, renderKey, refreshKey }: Prop
           <PopoverContent
             side="bottom"
             align="center"
-            className="w-80"
+            className="w-[calc(100vw-2rem)] sm:w-80"
             onOpenAutoFocus={(e) => e.preventDefault()}
           >
             <div className="mb-2 text-xs text-muted-foreground">
@@ -356,13 +356,13 @@ function CommentsList({
         {comments.map((c) => (
           <li key={c.id}>
             <Card className={"p-3" + (c.resolved ? " opacity-60" : "")}>
-              <div className="flex items-start gap-2">
+              <div className="flex items-start gap-2 min-w-0">
                 <button
                   type="button"
                   onClick={() => onFocus(c)}
-                  className="flex-1 text-left"
+                  className="flex-1 min-w-0 text-left"
                 >
-                  <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1.5">
+                  <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1.5 flex-wrap">
                     <span>{c.author} · {formatDate(c.createdAt)}</span>
                     {c.resolved && (
                       <span className="text-green-700 dark:text-green-400 flex items-center gap-0.5">

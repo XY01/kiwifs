@@ -234,7 +234,7 @@ function ExcalidrawEditorInner({
   return (
     <div className="flex flex-col h-full">
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border shrink-0">
-        <div className="px-8 py-2 max-w-6xl mx-auto">
+        <div className="px-4 sm:px-8 py-2 max-w-6xl mx-auto">
           {onNavigate
             ? <KiwiBreadcrumb path={path} onNavigate={onNavigate} />
             : <div className="text-sm text-muted-foreground font-mono truncate">{path}</div>}
@@ -242,18 +242,18 @@ function ExcalidrawEditorInner({
       </div>
 
       <div className="flex-1 overflow-auto kiwi-scroll">
-        <div className="max-w-6xl mx-auto px-8 py-6">
+        <div className="max-w-6xl mx-auto px-4 sm:px-8 py-6">
           <div className="mb-6">
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
               <div className="min-w-0">
-                <h1 className="text-2xl font-bold tracking-tight text-foreground leading-tight">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground leading-tight">
                   {fmTitle || titleize(path)}
                 </h1>
                 <div className="flex items-center gap-2 mt-2">
                   <SaveIndicator status={saveStatus} />
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0 pt-1">
+              <div className="flex items-center gap-2 shrink-0">
                 <Button
                   onClick={() => onSaveRef.current({ close: true })}
                   disabled={saving || saveStatus === "clean"}
@@ -261,10 +261,11 @@ function ExcalidrawEditorInner({
                   variant={saveStatus === "dirty" ? "default" : "outline"}
                 >
                   <Save className="h-3.5 w-3.5" />
-                  {saving ? "Saving…" : "Save & Close"}
+                  <span className="hidden sm:inline">{saving ? "Saving…" : "Save & Close"}</span>
+                  <span className="sm:hidden">{saving ? "…" : "Save"}</span>
                 </Button>
                 <Button variant="outline" size="sm" onClick={onClose}>
-                  <X className="h-3.5 w-3.5" /> Close
+                  <X className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Close</span>
                 </Button>
               </div>
             </div>
@@ -448,7 +449,7 @@ function EditorInner({
     <div className="flex flex-col h-full">
       {/* ── Sticky breadcrumb — matches KiwiPage structure ── */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border shrink-0">
-        <div className="px-8 py-2 max-w-6xl mx-auto">
+        <div className="px-4 sm:px-8 py-2 max-w-6xl mx-auto">
           {onNavigate
             ? <KiwiBreadcrumb path={path} onNavigate={onNavigate} />
             : <div className="text-sm text-muted-foreground font-mono truncate">{path}</div>}
@@ -457,19 +458,19 @@ function EditorInner({
 
       {/* ── Scrollable content ── */}
       <div className="flex-1 overflow-auto kiwi-scroll">
-        <div className="max-w-6xl mx-auto px-8 py-6">
+        <div className="max-w-6xl mx-auto px-4 sm:px-8 py-6">
           {/* ── Page header zone — matches KiwiPage structure ── */}
           <div className="mb-6">
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
               <div className="min-w-0">
-                <h1 className="text-2xl font-bold tracking-tight text-foreground leading-tight">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground leading-tight">
                   {fmTitle || titleize(path)}
                 </h1>
                 <div className="flex items-center gap-2 mt-2">
                   <SaveIndicator status={saveStatus} />
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0 pt-1">
+              <div className="flex items-center gap-2 shrink-0">
                 <Button
                   onClick={() => onSaveRef.current({ close: true })}
                   disabled={saving || !ready || saveStatus === "clean"}
@@ -477,10 +478,11 @@ function EditorInner({
                   variant={saveStatus === "dirty" ? "default" : "outline"}
                 >
                   <Save className="h-3.5 w-3.5" />
-                  {saving ? "Saving…" : "Save & Close"}
+                  <span className="hidden sm:inline">{saving ? "Saving…" : "Save & Close"}</span>
+                  <span className="sm:hidden">{saving ? "…" : "Save"}</span>
                 </Button>
                 <Button variant="outline" size="sm" onClick={onClose}>
-                  <X className="h-3.5 w-3.5" /> Close
+                  <X className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Close</span>
                 </Button>
               </div>
             </div>

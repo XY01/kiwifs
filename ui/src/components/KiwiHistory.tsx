@@ -152,13 +152,13 @@ export function KiwiHistory({ path, onClose, onRestored }: Props) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-8 py-3 border-b border-border">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-8 py-3 border-b border-border">
         <div className="flex items-center gap-2 min-w-0">
           <History className="h-4 w-4 text-muted-foreground shrink-0" />
           <div className="text-sm font-medium truncate">
             {titleize(path)}
           </div>
-          <span className="text-xs text-muted-foreground font-mono truncate">
+          <span className="text-xs text-muted-foreground font-mono truncate hidden sm:inline">
             {path}
           </span>
           <Separator orientation="vertical" className="h-4 mx-1" />
@@ -205,8 +205,8 @@ export function KiwiHistory({ path, onClose, onRestored }: Props) {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 flex">
-        <aside className="w-80 shrink-0 border-r border-border flex flex-col">
+      <div className="flex-1 min-h-0 flex flex-col sm:flex-row">
+        <aside className="w-full sm:w-80 shrink-0 border-b sm:border-b-0 sm:border-r border-border flex flex-col max-h-48 sm:max-h-none">
           <div className="px-4 py-2 text-xs uppercase tracking-wide text-muted-foreground border-b border-border">
             Versions
           </div>
@@ -267,7 +267,7 @@ export function KiwiHistory({ path, onClose, onRestored }: Props) {
             blameLoading ? (
               <div className="p-6 text-sm text-muted-foreground">Loading blame…</div>
             ) : blameLines && blameLines.length > 0 ? (
-              <div className="p-4">
+              <div className="p-4 overflow-x-auto">
                 <table className="w-full text-xs font-mono">
                   <tbody>
                     {blameLines.map((bl) => (
@@ -318,11 +318,11 @@ export function KiwiHistory({ path, onClose, onRestored }: Props) {
                 )}
               </div>
               <Separator className="mb-3" />
-              <div className="text-sm">
+              <div className="text-sm overflow-x-auto">
                 <ReactDiffViewer
                   oldValue={oldContent}
                   newValue={newContent}
-                  splitView
+                  splitView={typeof window !== "undefined" && window.innerWidth >= 640}
                   useDarkTheme={isDark}
                   compareMethod={DiffMethod.WORDS}
                   leftTitle={parentHash ? `Parent ${parentHash.slice(0, 7)}` : "Empty"}

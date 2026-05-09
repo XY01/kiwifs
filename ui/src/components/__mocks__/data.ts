@@ -217,6 +217,22 @@ export const mockMarkdownRichBody = mockMarkdownRich
 export const mockMarkdownSimpleBody = mockMarkdownSimple
   .replace(/^---[\s\S]*?---\n*/, "");
 
+export const mockMarkdownMermaid = `---
+title: Mermaid Diagram
+tags:
+  - diagrams
+---
+
+# Mermaid Diagram
+
+\`\`\`mermaid
+graph TD
+  A[Start] --> B{Decision}
+  B -->|Yes| C[OK]
+  B -->|No| D[End]
+\`\`\`
+`;
+
 export const mockMarkdownRenderingTest = `---
 title: Rendering Test — All Features
 tags:

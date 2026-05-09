@@ -285,7 +285,7 @@ export function KiwiThemeEditor({ onClose, onPresetReset }: Props) {
 
   return (
     <div className="h-full flex flex-col">
-      <header className="flex items-center gap-2 px-6 py-4 border-b border-border shrink-0">
+      <header className="flex items-center gap-2 px-4 sm:px-6 py-4 border-b border-border shrink-0">
         <h2 className="text-lg font-semibold flex-1">Theme Editor</h2>
         <span className="text-xs text-muted-foreground px-2 py-0.5 rounded bg-muted">
           {isDark ? "Dark" : "Light"} mode
@@ -295,13 +295,13 @@ export function KiwiThemeEditor({ onClose, onPresetReset }: Props) {
         </Button>
       </header>
 
-      <div className="flex-1 overflow-auto p-6 space-y-6 kiwi-scroll">
+      <div className="flex-1 overflow-auto p-4 sm:p-6 space-y-6 kiwi-scroll">
         {TOKEN_GROUPS.map((group) => (
           <div key={group.label}>
             <h3 className="text-sm font-medium text-muted-foreground mb-3">
               {group.label}
             </h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {group.tokens.map((t) => {
                 const val = activeTokens[t.key as string] || "";
                 const hex = val ? hslToHex(val) : "#888888";
@@ -348,7 +348,7 @@ export function KiwiThemeEditor({ onClose, onPresetReset }: Props) {
             <h3 className="text-sm font-medium text-muted-foreground mb-3">
               {group.label}
             </h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {group.tokens.map((t) => (
                 <div key={t.key}>
                   <Label className="text-xs">{t.label}</Label>
@@ -365,7 +365,7 @@ export function KiwiThemeEditor({ onClose, onPresetReset }: Props) {
         ))}
       </div>
 
-      <footer className="flex items-center gap-2 px-6 py-3 border-t border-border shrink-0">
+      <footer className="flex flex-wrap items-center gap-2 px-4 sm:px-6 py-3 border-t border-border shrink-0">
         <Button variant="outline" size="sm" onClick={handleExport}>
           <Download className="h-3.5 w-3.5 mr-1.5" />
           Export
@@ -386,11 +386,11 @@ export function KiwiThemeEditor({ onClose, onPresetReset }: Props) {
           onChange={handleImport}
         />
         <Button variant="ghost" size="sm" onClick={handleReset}>
-          Reset to preset
+          Reset
         </Button>
         <div className="flex-1" />
         <Button size="sm" onClick={save}>
-          Save theme
+          Save
         </Button>
       </footer>
     </div>

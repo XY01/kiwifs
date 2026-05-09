@@ -42,11 +42,11 @@ export function KiwiBacklinks({ path, onNavigate, refreshKey }: Props) {
           <button
             type="button"
             onClick={() => onNavigate(l.path)}
-            className="flex items-center gap-2 w-full text-left rounded-md px-2 py-1 -mx-2 transition-colors hover:bg-accent hover:text-accent-foreground text-sm"
+            className="flex items-center gap-2 w-full min-w-0 text-left rounded-md px-2 py-1 -mx-2 transition-colors hover:bg-accent hover:text-accent-foreground text-sm"
           >
             <File className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            <span className="truncate">{titleize(l.path)}</span>
-            <span className="text-xs text-muted-foreground ml-auto truncate">{l.path}</span>
+            <span className="truncate min-w-0">{titleize(l.path)}</span>
+            <span className="text-xs text-muted-foreground ml-auto truncate min-w-0 hidden sm:inline">{l.path}</span>
           </button>
         </li>
       ))}

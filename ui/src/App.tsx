@@ -61,7 +61,16 @@ export default function App() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [themeEditorOpen, setThemeEditorOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
   const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) return false;
     try { return localStorage.getItem("kiwifs-sidebar") !== "collapsed"; } catch { return true; }
   });
   const [sidebarWidth, setSidebarWidth] = useState(() => {
@@ -223,6 +232,7 @@ export default function App() {
     if (!path) {
       const firstMd = tree ? firstMarkdown(tree) : null;
       if (firstMd) setActivePath(firstMd);
+      if (isMobile) setSidebarOpen(false);
       return;
     }
     if (!isMarkdown(path)) {
@@ -232,6 +242,7 @@ export default function App() {
         setActivePath(target);
         setEditing(false);
         recordVisit(target);
+        if (isMobile) setSidebarOpen(false);
       }
       return;
     }
@@ -240,12 +251,19 @@ export default function App() {
     setGraphOpen(false);
     setHistoryOpen(false);
     recordVisit(path);
+    if (isMobile) setSidebarOpen(false);
   }
+
+  useEffect(() => {
+    if (isMobile) setSidebarOpen(false);
+  }, [isMobile]);
 
   const toggleSidebar = useCallback((open: boolean) => {
     setSidebarOpen(open);
-    try { localStorage.setItem("kiwifs-sidebar", open ? "open" : "collapsed"); } catch {}
-  }, []);
+    if (!isMobile) {
+      try { localStorage.setItem("kiwifs-sidebar", open ? "open" : "collapsed"); } catch {}
+    }
+  }, [isMobile]);
 
   return (
     <TooltipProvider delayDuration={250}>
@@ -271,14 +289,14 @@ export default function App() {
           </div>
 
           {/* Center zone: search bar */}
-          <div className="flex-1 flex justify-center px-4">
+          <div className="flex-1 flex justify-center px-2 sm:px-4">
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
               className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-background hover:bg-accent text-muted-foreground text-sm transition-colors w-full max-w-md"
             >
               <SearchIcon className="h-3.5 w-3.5 shrink-0" />
-              <span className="flex-1 text-left truncate">Search pages…</span>
+              <span className="flex-1 text-left truncate hidden sm:inline">Search pages…</span>
               <kbd className="text-[10px] bg-muted px-1.5 py-0.5 rounded font-mono hidden sm:inline">
                 {navigator.platform?.includes("Mac") ? "⌘" : "Ctrl+"}K
               </kbd>
@@ -359,13 +377,25 @@ export default function App() {
         </header>
 
         {/* ── Body: sidebar + content ── */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex overflow-hidden relative">
+          {/* Mobile backdrop */}
+          {isMobile && sidebarOpen && (
+            <div
+              className="absolute inset-0 z-20 bg-black/50 backdrop-blur-sm"
+              onClick={() => setSidebarOpen(false)}
+            />
+          )}
+
           {/* Sidebar */}
           <aside
-            className={"shrink-0 border-r border-border bg-card flex flex-col overflow-hidden" + (resizing.current ? "" : " transition-[width] duration-200")}
-            style={{ width: sidebarOpen ? sidebarWidth : 0 }}
+            className={
+              isMobile
+                ? "absolute inset-y-0 left-0 z-30 border-r border-border bg-card flex flex-col overflow-hidden transition-transform duration-200 " + (sidebarOpen ? "translate-x-0" : "-translate-x-full")
+                : "shrink-0 border-r border-border bg-card flex flex-col overflow-hidden" + (resizing.current ? "" : " transition-[width] duration-200")
+            }
+            style={isMobile ? { width: Math.min(sidebarWidth, 300) } : { width: sidebarOpen ? sidebarWidth : 0 }}
           >
-            <div className="flex flex-col h-full" style={{ minWidth: sidebarWidth }}>
+            <div className="flex flex-col h-full" style={{ minWidth: isMobile ? Math.min(sidebarWidth, 300) : sidebarWidth }}>
               {/* Space selector */}
               <SpaceSelector onSwitch={handleSpaceSwitch} />
 
@@ -452,8 +482,8 @@ export default function App() {
             </div>
           </aside>
 
-          {/* Sidebar resize handle */}
-          {sidebarOpen && (
+          {/* Sidebar resize handle (desktop only) */}
+          {sidebarOpen && !isMobile && (
             <div
               className="w-1 cursor-col-resize hover:bg-primary/30 active:bg-primary/50 transition-colors shrink-0 relative z-10"
               onMouseDown={(e) => {

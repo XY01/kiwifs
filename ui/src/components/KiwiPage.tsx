@@ -352,9 +352,9 @@ export function KiwiPage({ path, tree, onNavigate, onEdit, onHistory, onToggleSt
         <div className="max-w-6xl mx-auto px-4 md:px-8 py-6">
           {/* ── Page header zone ── */}
           <div className="mb-6">
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
               <div className="min-w-0">
-                <h1 className="text-2xl font-bold tracking-tight text-foreground leading-tight">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground leading-tight">
                   {frontmatterTitle || titleize(path)}
                 </h1>
                 {statusBadge && (
@@ -366,7 +366,7 @@ export function KiwiPage({ path, tree, onNavigate, onEdit, onHistory, onToggleSt
                   </Badge>
                 )}
               </div>
-              <div className="flex items-center gap-2 shrink-0 pt-1">
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 flex-wrap">
                 {onTogglePin && (
                   <Button variant="ghost" size="icon" onClick={onTogglePin} className="h-8 w-8" aria-label={isPinned ? "Unpin page" : "Pin page"}>
                     <Pin className={"h-4 w-4" + (isPinned ? " fill-current text-primary" : "")} />
@@ -379,11 +379,11 @@ export function KiwiPage({ path, tree, onNavigate, onEdit, onHistory, onToggleSt
                 )}
                 {onHistory && (
                   <Button variant="outline" size="sm" onClick={onHistory}>
-                    <HistoryIcon className="h-3.5 w-3.5" /> History
+                    <HistoryIcon className="h-3.5 w-3.5" /> <span className="hidden sm:inline">History</span>
                   </Button>
                 )}
                 <Button variant="default" size="sm" onClick={onEdit}>
-                  <Edit className="h-3.5 w-3.5" /> Edit
+                  <Edit className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Edit</span>
                 </Button>
                 <PageActions
                   path={path}
@@ -643,9 +643,9 @@ export function KiwiPage({ path, tree, onNavigate, onEdit, onHistory, onToggleSt
 
               {/* ── File info ── */}
               <div className="border-t border-border mt-8 pt-4 pb-2">
-                <div className="text-xs text-muted-foreground flex items-center gap-3">
-                  <FileAxis3D className="h-3.5 w-3.5" />
-                  <code className="font-mono">{path}</code>
+                <div className="text-xs text-muted-foreground flex items-center gap-3 min-w-0">
+                  <FileAxis3D className="h-3.5 w-3.5 shrink-0" />
+                  <code className="font-mono break-all min-w-0">{path}</code>
                 </div>
               </div>
             </article>
@@ -673,7 +673,7 @@ function FrontmatterProperties({
         {properties.map((property) => (
           <div
             key={property.key}
-            className="grid grid-cols-[minmax(8rem,12rem)_1fr] gap-4 rounded-md px-2 py-1.5 hover:bg-muted/40"
+            className="grid grid-cols-1 sm:grid-cols-[minmax(8rem,12rem)_1fr] gap-1 sm:gap-4 rounded-md px-2 py-1.5 hover:bg-muted/40"
           >
             <div className="flex min-w-0 items-center gap-2 text-muted-foreground">
               <PropertyIcon kind={property.kind} />
@@ -739,7 +739,7 @@ function SemanticFrontmatterValue({
     return (
       <dl className="m-0 space-y-1 rounded-md border border-border/60 p-2">
         {entries.map(([nestedKey, nestedValue]) => (
-          <div key={nestedKey} className="grid grid-cols-[minmax(6rem,10rem)_1fr] gap-2">
+          <div key={nestedKey} className="grid grid-cols-1 sm:grid-cols-[minmax(6rem,10rem)_1fr] gap-1 sm:gap-2">
             <dt className="min-w-0 truncate text-muted-foreground">{nestedKey}</dt>
             <dd className="m-0 min-w-0">
               <SemanticFrontmatterValue propertyKey={nestedKey} value={nestedValue} onTagClick={onTagClick} />
