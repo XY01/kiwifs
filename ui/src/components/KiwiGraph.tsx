@@ -8,141 +8,39 @@
 // renderer uses for in-page wiki links — so the graph shows the same shape a
 // reader sees when clicking links.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Graph from "graphology";
 import circular from "graphology-layout/circular";
 import forceAtlas2 from "graphology-layout-forceatlas2";
 import louvain from "graphology-communities-louvain";
-import { createNodeBorderProgram } from "@sigma/node-border";
-import type {
-  NodeHoverDrawingFunction,
-  NodeLabelDrawingFunction,
-} from "sigma/rendering";
 import {
   SigmaContainer,
+  useLoadGraph,
   useRegisterEvents,
   useSetSettings,
   useSigma,
 } from "@react-sigma/core";
-import { ArrowLeft, Loader2, Maximize2, Search as SearchIcon, Tag } from "lucide-react";
+import { ArrowLeft, Loader2, Search as SearchIcon, Tag } from "lucide-react";
 import "@react-sigma/core/lib/style.css";
-import { api, type GraphResponse, type TreeEntry } from "../lib/api";
-import { buildResolver } from "../lib/wikiLinks";
-import { titleize } from "../lib/paths";
-import { cn } from "../lib/cn";
-import { getGraphPerformanceProfile } from "../lib/graphPerformance";
+import { api, type GraphResponse, type TreeEntry } from "@kw/lib/api";
+import { buildResolver } from "@kw/lib/wikiLinks";
+import { titleize } from "@kw/lib/paths";
+import { cn } from "@kw/lib/cn";
 import {
   colorForGraphCommunity,
   readKiwiGraphTheme,
   type KiwiGraphTheme,
-} from "../lib/kiwiGraphTheme";
-import { Button } from "./ui/button";
-import { Card } from "./ui/card";
-import { Input } from "./ui/input";
+} from "@kw/lib/kiwiGraphTheme";
+import { Button } from "@kw/components/ui/button";
+import { Card } from "@kw/components/ui/card";
+import { Input } from "@kw/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./ui/select";
-
-const LABEL_BACKGROUND = "rgba(2, 6, 23, 0.84)";
-const LABEL_BORDER = "rgba(148, 163, 184, 0.4)";
-const LABEL_TEXT = "#f8fafc";
-
-const drawRoundedRect = (
-  context: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number,
-) => {
-  const r = Math.min(radius, width / 2, height / 2);
-  context.beginPath();
-  context.moveTo(x + r, y);
-  context.lineTo(x + width - r, y);
-  context.quadraticCurveTo(x + width, y, x + width, y + r);
-  context.lineTo(x + width, y + height - r);
-  context.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
-  context.lineTo(x + r, y + height);
-  context.quadraticCurveTo(x, y + height, x, y + height - r);
-  context.lineTo(x, y + r);
-  context.quadraticCurveTo(x, y, x + r, y);
-  context.closePath();
-};
-
-const drawKiwiGraphNodeLabel: NodeLabelDrawingFunction = (
-  context,
-  data,
-  settings,
-) => {
-  if (!data.label) return;
-  const size = settings.labelSize;
-  const font = settings.labelFont;
-  const weight = settings.labelWeight;
-  const label = String(data.label);
-  const paddingX = 5;
-  const paddingY = 3;
-  const gap = 5;
-
-  context.save();
-  context.font = `${weight} ${size}px ${font}`;
-  const textWidth = context.measureText(label).width;
-  const boxHeight = size + paddingY * 2;
-  const x = data.x + data.size + gap;
-  const y = data.y - boxHeight / 2;
-
-  drawRoundedRect(context, x, y, textWidth + paddingX * 2, boxHeight, 4);
-  context.fillStyle = LABEL_BACKGROUND;
-  context.fill();
-  context.strokeStyle = LABEL_BORDER;
-  context.lineWidth = 1;
-  context.stroke();
-
-  context.fillStyle = LABEL_TEXT;
-  context.textBaseline = "middle";
-  context.fillText(label, x + paddingX, data.y);
-  context.restore();
-};
-
-const drawKiwiGraphNodeHover: NodeHoverDrawingFunction = (
-  context,
-  data,
-  settings,
-) => {
-  if (!data.label) {
-    context.save();
-    context.shadowOffsetX = 0;
-    context.shadowOffsetY = 0;
-    context.shadowBlur = 8;
-    context.shadowColor = "#000";
-    context.fillStyle = LABEL_BACKGROUND;
-    context.beginPath();
-    context.arc(data.x, data.y, data.size + 2, 0, Math.PI * 2);
-    context.closePath();
-    context.fill();
-    context.restore();
-    return;
-  }
-  drawKiwiGraphNodeLabel(context, data, settings);
-};
-
-const GraphNodeBorderProgram = createNodeBorderProgram({
-  drawLabel: drawKiwiGraphNodeLabel,
-  drawHover: drawKiwiGraphNodeHover,
-  borders: [
-    {
-      color: { attribute: "borderColor", defaultValue: "#0b0b0b" },
-      size: { attribute: "borderSize", defaultValue: 1.25, mode: "pixels" },
-    },
-    {
-      color: { attribute: "color" },
-      size: { fill: true },
-    },
-  ],
-});
+} from "@kw/components/ui/select";
 
 type Props = {
   tree: TreeEntry | null;
@@ -161,8 +59,6 @@ type Built = {
   dirs: string[];
   tags: string[];
   theme: KiwiGraphTheme;
-  largeGraph: boolean;
-  renderLabelsByDefault: boolean;
 };
 
 // Build the Graphology instance from the server response plus the file tree.
@@ -175,7 +71,6 @@ function buildGraph(
   theme: KiwiGraphTheme,
 ): Built {
   const g = new Graph({ type: "undirected", multi: false });
-  const perf = getGraphPerformanceProfile(resp.nodes.length);
   const resolver = buildResolver(tree);
 
   const tagSet = new Set<string>();
@@ -186,10 +81,7 @@ function buildGraph(
       dir: topDir(n.path),
       tags: n.tags || [],
       size: 4,
-      type: "border",
       color: theme.defaultNode,
-      borderColor: "#0b0b0b",
-      borderSize: 1.25,
     });
     if (n.tags) n.tags.forEach((t) => tagSet.add(t));
   }
@@ -233,7 +125,7 @@ function buildGraph(
   // Initial seed positions — ForceAtlas2 explodes if all nodes share (0,0).
   circular.assign(g, { scale: 100 });
   forceAtlas2.assign(g, {
-    iterations: perf.forceAtlas2Iterations,
+    iterations: 200,
     settings: {
       gravity: 1,
       scalingRatio: 10,
@@ -243,21 +135,7 @@ function buildGraph(
     },
   });
 
-  return {
-    graph: g,
-    dirs: Array.from(dirSet).sort(),
-    tags: Array.from(tagSet).sort(),
-    theme,
-    largeGraph: perf.largeGraph,
-    renderLabelsByDefault: perf.renderLabelsByDefault,
-  };
-}
-
-function fitSigmaView(sigma: ReturnType<typeof useSigma>, animate = false) {
-  sigma.resize(true);
-  sigma.refresh();
-  const camera = sigma.getCamera();
-  void camera.animatedReset({ duration: animate ? 250 : 0 });
+  return { graph: g, dirs: Array.from(dirSet).sort(), tags: Array.from(tagSet).sort(), theme };
 }
 
 export function KiwiGraph({ tree, activePath, onNavigate, onClose }: Props) {
@@ -312,11 +190,6 @@ export function KiwiGraph({ tree, activePath, onNavigate, onClose }: Props) {
             ? `${built.graph.order} pages · ${built.graph.size} links`
             : null}
         </div>
-        {built?.largeGraph && (
-          <div className="text-xs text-muted-foreground hidden md:block">
-            Large graph mode: labels appear on hover/search.
-          </div>
-        )}
         <div className="ml-auto flex items-center gap-2">
           <div className="relative">
             <SearchIcon className="h-3.5 w-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
@@ -393,18 +266,12 @@ export function KiwiGraph({ tree, activePath, onNavigate, onClose }: Props) {
             className="!bg-background"
             style={{ height: "100%", width: "100%" }}
             settings={{
-              renderLabels: built.renderLabelsByDefault,
+              renderLabels: true,
               labelColor: { attribute: "color" },
               labelSize: 12,
               labelWeight: "500",
               labelDensity: 0.7,
               labelGridCellSize: 80,
-              defaultNodeType: "border",
-              nodeProgramClasses: {
-                border: GraphNodeBorderProgram,
-              },
-              defaultDrawNodeLabel: drawKiwiGraphNodeLabel,
-              defaultDrawNodeHover: drawKiwiGraphNodeHover,
               defaultEdgeColor: built.theme.edge,
               zIndex: true,
             }}
@@ -418,9 +285,7 @@ export function KiwiGraph({ tree, activePath, onNavigate, onClose }: Props) {
               tagFilter={tagFilter}
               activePath={activePath || undefined}
               colors={built.theme}
-              renderLabelsByDefault={built.renderLabelsByDefault}
             />
-            <GraphViewportControls />
           </SigmaContainer>
         )}
         {hovered && built && built.graph.hasNode(hovered) && (
@@ -464,7 +329,6 @@ function GraphInteractions({
   tagFilter,
   activePath,
   colors,
-  renderLabelsByDefault,
 }: {
   onNavigate: (path: string) => void;
   hovered: string | null;
@@ -474,35 +338,21 @@ function GraphInteractions({
   tagFilter: string;
   activePath?: string;
   colors: KiwiGraphTheme;
-  renderLabelsByDefault: boolean;
 }) {
   const sigma = useSigma();
   const registerEvents = useRegisterEvents();
   const setSettings = useSetSettings();
+  const loadGraph = useLoadGraph();
+  const loadedRef = useRef(false);
 
-  // Sigma can mount before the flex container has its final size. Force resize
-  // across animation frames so the graph does not flash into a zero-size or
-  // off-screen viewport on large vaults.
+  // One-time graph handoff: the container already receives the graph, but
+  // calling loadGraph makes re-render behaviour explicit and survives HMR.
   useEffect(() => {
-    let frame1 = 0;
-    let frame2 = 0;
-    frame1 = requestAnimationFrame(() => {
-      fitSigmaView(sigma, false);
-      frame2 = requestAnimationFrame(() => fitSigmaView(sigma, false));
-    });
-
-    const resizeObserver = new ResizeObserver(() => {
-      sigma.resize(true);
-      sigma.refresh();
-    });
-    resizeObserver.observe(sigma.getContainer());
-
-    return () => {
-      cancelAnimationFrame(frame1);
-      cancelAnimationFrame(frame2);
-      resizeObserver.disconnect();
-    };
-  }, [sigma]);
+    if (loadedRef.current) return;
+    loadedRef.current = true;
+    const g = sigma.getGraph();
+    if (g) loadGraph(g as any);
+  }, [loadGraph, sigma]);
 
   useEffect(() => {
     registerEvents({
@@ -527,7 +377,6 @@ function GraphInteractions({
     }
 
     setSettings({
-      renderLabels: renderLabelsByDefault || Boolean(hovered || query),
       nodeReducer: (node, data) => {
         const out: any = { ...data };
         const path = (data as any).path as string;
@@ -553,9 +402,7 @@ function GraphInteractions({
         if (hovered) {
           if (!neighbors.has(node)) {
             if (node !== activePath) {
-              // Keep community colors visible while hovering.  The graph can contain many
-              // isolated nodes; dimming every non-neighbor makes the whole graph look
-              // monochrome when the pointer lands on one of them.
+              out.color = colors.nodeDim;
               out.label = "";
               out.zIndex = 0;
             }
@@ -609,22 +456,9 @@ function GraphInteractions({
     });
 
     sigma.refresh();
-  }, [sigma, setSettings, hovered, query, dirFilter, tagFilter, activePath, colors, renderLabelsByDefault]);
+  }, [sigma, setSettings, hovered, query, dirFilter, tagFilter, activePath, colors]);
 
   return null;
-}
-
-function GraphViewportControls() {
-  const sigma = useSigma();
-  const fit = useCallback(() => fitSigmaView(sigma, true), [sigma]);
-
-  return (
-    <div className="absolute top-3 left-3">
-      <Button variant="secondary" size="sm" onClick={fit} title="Fit graph to view">
-        <Maximize2 className="h-3.5 w-3.5" /> Fit graph
-      </Button>
-    </div>
-  );
 }
 
 function GraphLegend({ graph, theme }: { graph: Graph; theme: KiwiGraphTheme }) {

@@ -6,21 +6,21 @@ import {
   useState,
 } from "react";
 import { CheckCircle, Circle, Plus, Trash2 } from "lucide-react";
-import { api, type Comment, type CommentAnchor } from "../lib/api";
+import { api, type Comment, type CommentAnchor } from "@kw/lib/api";
 import {
   anchorFromSelection,
   clearWraps,
   wrapAnchor,
-} from "../lib/highlights";
-import { Button } from "./ui/button";
-import { Card } from "./ui/card";
+} from "@kw/lib/highlights";
+import { Button } from "@kw/components/ui/button";
+import { Card } from "@kw/components/ui/card";
 import {
   Popover,
   PopoverAnchor,
   PopoverContent,
-} from "./ui/popover";
+} from "@kw/components/ui/popover";
 
-import { Textarea } from "./ui/textarea";
+import { Textarea } from "@kw/components/ui/textarea";
 
 type Props = {
   path: string;

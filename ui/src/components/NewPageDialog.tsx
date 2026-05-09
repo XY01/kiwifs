@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { File, Sparkles } from "lucide-react";
-import { api } from "../lib/api";
-import { Button } from "./ui/button";
+import { api } from "@kw/lib/api";
+import { Button } from "@kw/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,10 +9,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "./ui/dialog";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { cn } from "../lib/cn";
+} from "@kw/components/ui/dialog";
+import { Input } from "@kw/components/ui/input";
+import { Label } from "@kw/components/ui/label";
+import { cn } from "@kw/lib/cn";
 
 type Template = { name: string; path: string };
 

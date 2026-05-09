@@ -6,7 +6,7 @@ import type {
   Comment,
   GraphNode,
   GraphEdge,
-} from "../../lib/api";
+} from "@kw/lib/api";
 
 export const mockTree: TreeEntry = {
   path: "",
@@ -311,55 +311,6 @@ Link to [[wikilinks]] and a missing page [[nonexistent-page]].
 ## Images
 
 ![Broken image test](/raw/assets/nonexistent.png)
-`;
-
-export const mockMarkdownMermaid = `---
-title: Architecture Overview
-tags:
-  - diagram
-  - architecture
----
-
-## System Architecture
-
-\`\`\`mermaid
-graph TD
-    A[Browser] --> B[KiwiFS Server]
-    B --> C[File Watcher]
-    B --> D[SQLite FTS5]
-    B --> E[Git Backend]
-    C --> F[Markdown Files]
-    D --> F
-    E --> F
-\`\`\`
-
-## Request Flow
-
-\`\`\`mermaid
-sequenceDiagram
-    participant U as User
-    participant K as KiwiFS
-    participant S as SQLite
-    participant G as Git
-
-    U->>K: Save page
-    K->>G: git add + commit
-    K->>S: Re-index FTS5
-    K-->>U: 200 OK
-\`\`\`
-
-Some regular text between diagrams.
-
-## Page Lifecycle
-
-\`\`\`mermaid
-stateDiagram-v2
-    [*] --> Draft
-    Draft --> Published: publish
-    Published --> Archived: archive
-    Archived --> Published: restore
-    Draft --> [*]: delete
-\`\`\`
 `;
 
 export const mockSearchResults: SearchResult[] = [

@@ -106,8 +106,13 @@ const DEFAULT_ACTOR = "human:web-ui";
 let _baseOverride: string | null = null;
 let _extraHeaders: Record<string, string> = {};
 
-export function setBaseOverride(base: string | null) { _baseOverride = base; }
-export function setExtraHeaders(headers: Record<string, string>) { _extraHeaders = headers; }
+export function setBaseOverride(base: string | null) {
+  _baseOverride = base;
+}
+
+export function setExtraHeaders(headers: Record<string, string>) {
+  _extraHeaders = headers;
+}
 
 let _currentSpace: string | null = null;
 const _spaceListeners = new Set<() => void>();
