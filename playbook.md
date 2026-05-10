@@ -56,7 +56,7 @@ When given new information to add:
    ---
    ```
 2. `kiwi_append` to `log.md`:
-   `- YYYY-MM-DD: Remembered <summary> → [[episodes/<file>]]`
+   `- YYYY-MM-DD: Remembered <summary> → [[episode-slug]]`
 
 ## Consolidate (episodes → durable pages)
 
