@@ -40,7 +40,7 @@ When given new information to add:
 2. `kiwi_read` top results. Use `if_not_etag` if you've read them
    before to save tokens.
 3. `kiwi_backlinks` on key pages to find related context.
-4. Synthesize an answer citing `\[[page]]` links.
+4. Synthesize an answer citing page links. Use `kiwi_backlinks` to find related pages.
 5. If the answer reveals a gap, run Ingest to fill it.
 
 ## Remember (save observations during a session)
