@@ -115,7 +115,7 @@ Introduction paragraph.
 - **One concept per page.** Split pages over 300 lines.
 - **Every page needs frontmatter** with at least `title` and `tags`.
 - **No orphans.** Every page reachable from `index.md` within 2 hops.
-- **No broken links.** Every `[[wikilink]]` should resolve.
+- **No broken links.** Every `\[[wikilink]]` should resolve.
 - **Provenance.** Agent-created pages must set provenance on write.
 - **Prefer pages over episodes.** When querying, use consolidated
   pages as primary source. Fall back to episodes only if no page exists.
