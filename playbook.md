@@ -105,7 +105,7 @@ Introduction paragraph.
 
 ## Section
 
-Content with [[wiki links]] to related pages.
+Content with \[[wiki links]] to related pages.
 
 ## Related
 - [[related-page]] — why it's related
