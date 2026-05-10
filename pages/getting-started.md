@@ -25,5 +25,7 @@ quality. See `.kiwi/playbook.md` for the full operation guide.
 ## Conventions
 
 - Every page has YAML frontmatter with `title` and `tags`
-- Pages link to each other with `[[page-name]]` (escape with `\[[page-name]]` in documentation to avoid lint errors)
+- Pages link to each other with wiki links (see SCHEMA.md for syntax)
+
+See the Page Format section in playbook.md for an example.
 - One concept per page — split when a page exceeds 300 lines
