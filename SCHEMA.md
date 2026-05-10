@@ -74,7 +74,8 @@ durable pages over raw episodes when both exist.
 
 ## Conventions
 
-- Link between pages with `[[wiki links]]`
+- Link between pages with backslash-escaped wiki links to prevent linting: `\[[wiki links]]`
+- Example in body text: `Text \[[like this]] to reference another page`
 - Keep pages focused — one concept per page
 - Split pages over 300 lines
 - Use YAML frontmatter for all structured metadata
