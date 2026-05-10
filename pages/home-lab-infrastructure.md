@@ -2,11 +2,10 @@
 title: Home Lab Infrastructure
 tags: [home-lab, infrastructure, network, services]
 created: 2026-05-10T14:18:00+10:00
+updated: 2026-05-10T14:31:00+10:00
 ---
 
 # Home Lab Infrastructure
-
-Visual diagram: `/home/brad/infra-diagram.html`
 
 ## Network
 
@@ -57,5 +56,4 @@ Visual diagram: `/home/brad/infra-diagram.html`
 
 ## Diagram
 
-![Infra Diagram](file:///home/brad/infra-diagram.html)
-
+![Infra Diagram](/home/brad/infra-diagram.png)
