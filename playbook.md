@@ -104,10 +104,10 @@ Introduction paragraph.
 
 ## Section
 
-- Content with code-formatted links to related pages.
+- Content with links to related pages.
 
 ## Related
-- [[related-page]] — why it's related
+- links to related pages
 ```
 
 ## Quality Rules
