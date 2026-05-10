@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.10.0](https://github.com/kiwifs/kiwifs/compare/v0.9.0...v0.10.0) (2026-05-10)
+
+
+### Features
+
+* markdown auto-format on write + kiwi_lint MCP tool ([#53](https://github.com/kiwifs/kiwifs/issues/53)) ([ad76ac9](https://github.com/kiwifs/kiwifs/commit/ad76ac980c3e60cbb8b3bd0936b6d3d77fda9719))
+
+
+### Bug Fixes
+
+* **ui:** array frontmatter parsing; dedupe properties block; print layout ([6ad6dc3](https://github.com/kiwifs/kiwifs/commit/6ad6dc3f65dd22f0026fcb61af5e0a5771855f40))
+* **ui:** batch fix theme editor, search, wiki links, graph, and nav bugs ([a3fe400](https://github.com/kiwifs/kiwifs/commit/a3fe400944df7cad6eaef800a415a570ae6fb1db))
+* **ui:** batch fix theme editor, search, wiki links, graph, and nav bugs ([c6ad3dd](https://github.com/kiwifs/kiwifs/commit/c6ad3dd1548ea4d15b9d014716021114da1a83bf))
+* **ui:** refine KiwiPage, ToC, page actions, and base styles ([096688f](https://github.com/kiwifs/kiwifs/commit/096688fc1f80ba549f0f81592a4d7cbf63c7dab3))
+* **ui:** screen-reader title for command palette dialog ([cb9c6d0](https://github.com/kiwifs/kiwifs/commit/cb9c6d0649e45f38f7b36c9be015ba0373f5b1be))
+* **ui:** shrink recent-search clear icon in KiwiSearch ([dd372fc](https://github.com/kiwifs/kiwifs/commit/dd372fc468613fe6c47f29afdfc8b140dfb1f21b))
+* **ui:** tweak App shell, page actions, and global CSS ([5181591](https://github.com/kiwifs/kiwifs/commit/5181591868072a243ace8123a4a5a66697030a88))
+
 ## [0.9.0](https://github.com/kiwifs/kiwifs/compare/v0.8.0...v0.9.0) (2026-05-09)
 
 
