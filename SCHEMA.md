@@ -74,7 +74,7 @@ durable pages over raw episodes when both exist.
 
 ## Conventions
 
-- **Wiki links** — syntax: open-bracket, page-name, close-bracket. Example in code: `[[my-topic]]` creates a link to `my-topic.md`. Use backslash to escape: `\[[page-name]]` prevents lint errors when describing the syntax itself.
+- **Wiki links** — format: open bracket + page name + close bracket. Links to a page file in the current space. Escape with backslash when showing the syntax itself to avoid lint errors.
 - **Template examples** — angle-bracket forms like `pages/<slug>` and `episodes/<file>` in code blocks are notation, not real links
 - Keep pages focused — one concept per page
 - Split pages over 300 lines
