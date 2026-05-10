@@ -74,8 +74,8 @@ durable pages over raw episodes when both exist.
 
 ## Conventions
 
-- Link between pages: write `\[[page-name]]` — the backslash escapes the link so the linter ignores it
-- Example: `Connect related topics with \[[another-page]]`
+- **Wiki links** — use `\[[page-name]]` format; escape with backslash to prevent lint errors
+- Template examples in code blocks use angle-bracket syntax like `[[pages/<slug>]]` — these are placeholders, not real links
 - Keep pages focused — one concept per page
 - Split pages over 300 lines
 - Use YAML frontmatter for all structured metadata
