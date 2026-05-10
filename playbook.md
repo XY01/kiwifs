@@ -82,7 +82,7 @@ Run periodically or when asked to clean up:
 2. `kiwi_changes` with `since=<last_checkpoint>` — review recent
    edits for quality.
 3. For each issue:
-   - Orphan page → add `[[wiki links]]` from related pages or index
+   - Orphan page → add `\[[wiki links]]` from related pages or index
    - Broken link → `kiwi_search` for intended target, fix the link
    - Stale page → update content, bump `last-reviewed`
    - Duplicate → merge into one, `kiwi_rename` + `kiwi_delete`
