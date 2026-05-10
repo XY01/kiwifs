@@ -28,8 +28,7 @@ When given new information to add:
    ```
    Set provenance via the `provenance` parameter:
    `ingest:<source-slug>`.
-3. **Cross-link.** Use `\[[wiki links]]` in the body to connect to
-   related pages. Use `kiwi_search` to discover what exists.
+3. **Cross-link.** Use code formatting in the body to connect to related pages. Use `kiwi_search` to discover what exists.
 4. **Update the log.** `kiwi_append` to `log.md`:
    `- YYYY-MM-DD: Ingested <title> → [[pages/<slug>]]`
 5. **Update the index.** `kiwi_read` `index.md`, add the new
