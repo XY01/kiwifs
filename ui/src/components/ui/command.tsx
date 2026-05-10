@@ -3,7 +3,7 @@ import { Command as CommandPrimitive } from "cmdk";
 import { Search } from "lucide-react";
 
 import { cn } from "@kw/lib/cn";
-import { Dialog, DialogContent } from "@kw/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@kw/components/ui/dialog";
 
 const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,
@@ -38,6 +38,7 @@ const CommandDialog = ({
       className={cn("overflow-hidden p-0 sm:max-w-2xl", contentClassName)}
       showCloseButton={false}
     >
+      <DialogTitle className="sr-only">Search</DialogTitle>
       <Command
         {...commandProps}
         className={cn(
