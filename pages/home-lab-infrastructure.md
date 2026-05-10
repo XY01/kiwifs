@@ -56,4 +56,4 @@ updated: 2026-05-10T14:31:00+10:00
 
 ## Diagram
 
-![Infra Diagram](/home/brad/infra-diagram.png)
+![Infra Diagram](assets/infra-diagram.png)
