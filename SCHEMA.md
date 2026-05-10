@@ -74,7 +74,7 @@ durable pages over raw episodes when both exist.
 
 ## Conventions
 
-- Link between pages with `[[[wiki links]]]` (example syntax)
+- Link between pages with `[[wiki links]]`
 - Keep pages focused — one concept per page
 - Split pages over 300 lines
 - Use YAML frontmatter for all structured metadata
