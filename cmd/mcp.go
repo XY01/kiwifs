@@ -30,7 +30,7 @@ Transports:
   kiwifs mcp --remote http://localhost:3333
   kiwifs mcp --remote http://kiwifs.example.com:3333 --api-key $KIWI_API_KEY
   kiwifs mcp --root ~/knowledge --http
-  kiwifs mcp --remote http://localhost:3333 --http --port 8080`,
+  kiwifs mcp --remote http://localhost:3333 --http --port 3007`,
 	RunE: runMCP,
 }
 
@@ -40,7 +40,7 @@ func init() {
 	mcpCmd.Flags().String("api-key", "", "API key for remote server")
 	mcpCmd.Flags().String("space", "default", "space to scope operations to")
 	mcpCmd.Flags().Bool("http", false, "serve MCP over Streamable HTTP instead of stdio")
-	mcpCmd.Flags().Int("port", 8181, "HTTP MCP port (used with --http)")
+	mcpCmd.Flags().Int("port", 3007, "HTTP MCP port (used with --http)")
 }
 
 func runMCP(cmd *cobra.Command, args []string) error {
