@@ -30,9 +30,9 @@ When given new information to add:
    `ingest:<source-slug>`.
 3. **Cross-link.** Use code formatting in the body to connect to related pages. Use `kiwi_search` to discover what exists.
 4. **Update the log.** `kiwi_append` to `log.md`:
-   `- YYYY-MM-DD: Ingested <title> → [[pages/<slug>]]`
+   `- YYYY-MM-DD: Ingested <title> → [[slug]]`
 5. **Update the index.** `kiwi_read` `index.md`, add the new
-   `[[pages/<slug>]]` link, `kiwi_write` it back.
+   `[[slug]]` link, `kiwi_write` it back.
 
 ## Query (answer a question from the wiki)
 
