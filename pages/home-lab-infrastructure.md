@@ -2,7 +2,7 @@
 title: Home Lab Infrastructure
 tags: [home-lab, infrastructure, network, services]
 created: 2026-05-10T14:18:00+10:00
-updated: 2026-05-10T14:31:00+10:00
+updated: 2026-05-10T15:40:00+10:00
 ---
 
 # Home Lab Infrastructure
@@ -54,6 +54,41 @@ updated: 2026-05-10T14:31:00+10:00
 - Use `--insecure` flag for LAN access (Hermes requires it for 0.0.0.0 binding)
 - All services exposed on all interfaces
 
-## Diagram
+## Diagrams
 
+### Infrastructure Diagram
 ![Infra Diagram](assets/infra-diagram.png)
+
+### KiwiFS Spaces
+![KiwiFS Spaces](assets/kiwifs-diagram.png)
+
+## KiwiFS Knowledge
+
+KiwiFS runs on `localhost:3333` and provides knowledge management.
+
+### Spaces
+
+| Space | Purpose |
+|-------|---------|
+| default | General docs, home lab |
+| family | People, health, finance, events |
+| projects | checkin, mcdev, mcmain, webgpu |
+| research | Graphics, physics, game |
+| agent | AI, models, skills |
+
+### Structure
+
+```
+knowledge/
+├── pages/       # Permanent docs
+├── episodes/    # Temp notes, TODOs
+└── assets/      # Images, binaries
+```
+
+### API
+
+```bash
+curl -X PUT "http://localhost:3333/api/kiwi/{space}/file?path=pages/name.md"
+curl -X GET "http://localhost:3333/api/kiwi/{space}/file?path=pages/name.md"
+curl -X POST "http://localhost:3333/api/kiwi/{space}/bulk"
+```
