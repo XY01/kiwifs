@@ -13,7 +13,6 @@ const meta: Meta<typeof KiwiSearch> = {
     onOpenChange: action("open-change"),
     onSelect: action("select"),
     tree: mockTree,
-    hideModeToggle: true,
   },
 };
 

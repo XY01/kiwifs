@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Calendar, Clock, File, Filter, FolderOpen, Sparkles, X } from "lucide-react";
+import { Calendar, Clock, File, Filter, FolderOpen, X } from "lucide-react";
 import {
   CommandDialog,
   CommandEmpty,
@@ -8,7 +8,7 @@ import {
   CommandItem,
   CommandList,
 } from "@kw/components/ui/command";
-import { api, type MetaFilter, type SearchResult, type SemanticResult, type TreeEntry } from "@kw/lib/api";
+import { api, type MetaFilter, type SemanticResult, type TreeEntry } from "@kw/lib/api";
 import { titleize } from "@kw/lib/paths";
 import { cn } from "@kw/lib/cn";
 
@@ -21,17 +21,12 @@ type Props = {
   onSelect: (path: string) => void;
   tree: TreeEntry | null;
   initialQuery?: string;
-  /** Hide the Full-text / Semantic mode chips (defaults to false). */
-  hideModeToggle?: boolean;
 };
-
-type Mode = "fts" | "semantic";
 
 type Hit = {
   path: string;
   snippet?: string;
   score?: number;
-  kind: Mode;
 };
 
 function topDirs(tree: TreeEntry | null): string[] {
@@ -67,12 +62,10 @@ function clearRecentSearches() {
   localStorage.removeItem(RECENT_KEY);
 }
 
-export function KiwiSearch({ open, onOpenChange, onSelect, tree, initialQuery, hideModeToggle }: Props) {
+export function KiwiSearch({ open, onOpenChange, onSelect, tree, initialQuery }: Props) {
   const [query, setQuery] = useState("");
-  const [mode, setMode] = useState<Mode>("fts");
   const [hits, setHits] = useState<Hit[]>([]);
   const [loading, setLoading] = useState(false);
-  const [unavailable, setUnavailable] = useState(false);
   const [dirFilter, setDirFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [recents, setRecents] = useState<string[]>([]);
@@ -102,7 +95,6 @@ export function KiwiSearch({ open, onOpenChange, onSelect, tree, initialQuery, h
     if (!query.trim()) {
       setHits([]);
       setLoading(false);
-      setUnavailable(false);
       return;
     }
     setLoading(true);
@@ -111,84 +103,98 @@ export function KiwiSearch({ open, onOpenChange, onSelect, tree, initialQuery, h
       const modifiedAfter = dateFilterToISO(dateFilter);
       const { text: textQuery, filters: metaFilters } = parseFieldFilters(query);
 
+      const searchQ = textQuery.trim();
+      if (!searchQ && metaFilters.length === 0) {
+        setHits([]);
+        setLoading(false);
+        return;
+      }
+
       const metaPromise = metaFilters.length > 0
         ? api.meta({ where: metaFilters, limit: 200 }).then((r) =>
             new Set(r.results.map((x) => x.path))
           ).catch(() => null as Set<string> | null)
         : Promise.resolve(null as Set<string> | null);
 
-      if (mode === "fts") {
-        const searchQ = textQuery.trim();
-        if (!searchQ && metaFilters.length === 0) {
-          setHits([]);
-          setLoading(false);
-          return;
-        }
-        const ftsPromise = searchQ
-          ? api.search(searchQ, modifiedAfter ? { modifiedAfter } : undefined)
-          : Promise.resolve(null);
-        Promise.all([ftsPromise, metaPromise]).then(([ftsRes, metaPaths]) => {
+      const dateOpts = modifiedAfter ? { modifiedAfter } : undefined;
+
+      // Fire FTS and semantic in parallel — merge results from both.
+      const ftsPromise = searchQ
+        ? api.search(searchQ, dateOpts).catch(() => null)
+        : Promise.resolve(null);
+
+      const semanticPromise = searchQ
+        ? api.semanticSearch(searchQ, 15, 0, dateOpts).catch(() => null)
+        : Promise.resolve(null);
+
+      Promise.all([ftsPromise, semanticPromise, metaPromise]).then(
+        ([ftsRes, semRes, metaPaths]) => {
           if (thisRequest !== requestId.current) return;
-          let results: Hit[] = [];
+
+          // Collect results into a map keyed by path, merging both sources.
+          const merged = new Map<string, Hit>();
+
+          // FTS results first (keyword-precise, keep their snippets).
           if (ftsRes) {
-            results = ftsRes.results.map((x: SearchResult) => ({
-              path: x.path,
-              snippet: x.snippet,
-              score: x.score,
-              kind: "fts" as Mode,
-            }));
+            for (const x of ftsRes.results) {
+              merged.set(x.path, {
+                path: x.path,
+                snippet: x.snippet,
+                score: x.score,
+              });
+            }
           }
+
+          // Fold in semantic results — prefer semantic snippet only if FTS
+          // didn't already provide one (FTS snippets have highlighted markup).
+          if (semRes) {
+            // Deduplicate semantic hits per-path (keep highest score chunk).
+            const bestSem = new Map<string, SemanticResult>();
+            for (const hit of semRes.results) {
+              const prev = bestSem.get(hit.path);
+              if (!prev || hit.score > prev.score) bestSem.set(hit.path, hit);
+            }
+
+            for (const [path, sem] of bestSem) {
+              const existing = merged.get(path);
+              if (existing) {
+                // Path already in FTS results — boost its score.
+                existing.score = (existing.score ?? 0) + (sem.score ?? 0);
+              } else {
+                merged.set(path, {
+                  path,
+                  snippet: highlightTerms(sem.snippet, query),
+                  score: sem.score,
+                });
+              }
+            }
+          }
+
+          let results = Array.from(merged.values());
+
+          // Apply metadata filters if present.
           if (metaPaths) {
             if (results.length > 0) {
               results = results.filter((h) => metaPaths.has(h.path));
             } else {
-              results = Array.from(metaPaths).map((p) => ({
-                path: p,
-                kind: "fts" as Mode,
-              }));
+              // Only metadata filters, no text query matched — show meta paths.
+              results = Array.from(metaPaths).map((p) => ({ path: p }));
             }
           }
+
+          // Sort by combined score descending.
+          results.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+
           setHits(results);
-          setUnavailable(false);
-        }).catch(() => { if (thisRequest === requestId.current) setHits([]); })
-          .finally(() => { if (thisRequest === requestId.current) setLoading(false); });
-      } else {
-        api
-          .semanticSearch(textQuery || query, 15, 0, modifiedAfter ? { modifiedAfter } : undefined)
-          .then((r) => {
-            if (thisRequest !== requestId.current) return;
-            const best = new Map<string, SemanticResult>();
-            for (const hit of r.results) {
-              const prev = best.get(hit.path);
-              if (!prev || hit.score > prev.score) best.set(hit.path, hit);
-            }
-            return metaPromise.then((metaPaths) => {
-              if (thisRequest !== requestId.current) return;
-              let results = Array.from(best.values()).map((x) => ({
-                path: x.path,
-                snippet: x.snippet,
-                score: x.score,
-                kind: "semantic" as Mode,
-              }));
-              if (metaPaths) {
-                results = results.filter((h) => metaPaths.has(h.path));
-              }
-              setHits(results);
-              setUnavailable(false);
-            });
-          })
-          .catch((e) => {
-            if (thisRequest !== requestId.current) return;
-            setHits([]);
-            setUnavailable(String(e).includes("503"));
-          })
-          .finally(() => { if (thisRequest === requestId.current) setLoading(false); });
-      }
+        },
+      )
+        .catch(() => { if (thisRequest === requestId.current) setHits([]); })
+        .finally(() => { if (thisRequest === requestId.current) setLoading(false); });
     }, 150);
     return () => {
       if (debounce.current) window.clearTimeout(debounce.current);
     };
-  }, [query, mode, dateFilter]);
+  }, [query, dateFilter]);
 
   function handleSelect(path: string) {
     if (query.trim()) saveRecentSearch(query.trim());
@@ -207,33 +213,13 @@ export function KiwiSearch({ open, onOpenChange, onSelect, tree, initialQuery, h
       commandProps={{ shouldFilter: false }}
     >
       <CommandInput
-        placeholder={
-          mode === "fts"
-            ? "Full-text search…"
-            : "Semantic search (meaning, not keywords)…"
-        }
+        placeholder="Search…"
         value={query}
         onValueChange={setQuery}
       />
       <div className="flex items-center gap-1 px-3 py-2 border-b border-border text-xs flex-wrap">
-        {!hideModeToggle && (
-          <>
-            <ModeChip
-              active={mode === "fts"}
-              onClick={() => setMode("fts")}
-              label="Full-text"
-            />
-            <ModeChip
-              active={mode === "semantic"}
-              onClick={() => setMode("semantic")}
-              label="Semantic"
-              icon={<Sparkles className="h-3 w-3" />}
-            />
-          </>
-        )}
         {dirs.length > 0 && (
           <>
-            <span className="w-px h-4 bg-border mx-1" />
             <FolderOpen className="h-3 w-3 text-muted-foreground" />
             {dirFilter ? (
               <button
@@ -256,7 +242,7 @@ export function KiwiSearch({ open, onOpenChange, onSelect, tree, initialQuery, h
             )}
           </>
         )}
-        <span className="w-px h-4 bg-border mx-1" />
+        {dirs.length > 0 && <span className="w-px h-4 bg-border mx-1" />}
         <Calendar className="h-3 w-3 text-muted-foreground" />
         {dateFilter ? (
           <button
@@ -290,13 +276,6 @@ export function KiwiSearch({ open, onOpenChange, onSelect, tree, initialQuery, h
         )}
       </div>
       <CommandList>
-        {unavailable && (
-          <div className="px-3 py-4 text-xs text-muted-foreground">
-            Semantic search isn't enabled on this server. Toggle back to
-            full-text, or set <code className="font-mono">search.vector</code>{" "}
-            in the kiwifs config.
-          </div>
-        )}
         {!query.trim() && recents.length > 0 && (
           <CommandGroup heading="Recent searches">
             {recents.map((q) => (
@@ -304,34 +283,41 @@ export function KiwiSearch({ open, onOpenChange, onSelect, tree, initialQuery, h
                 key={q}
                 value={"recent:" + q}
                 onSelect={() => handleRecentClick(q)}
+                className="!items-center !py-1.5 !gap-1.5"
               >
-                <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                <span className="text-sm truncate">{q}</span>
+                <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
+                <span className="text-xs truncate flex-1">{q}</span>
+                <button
+                  type="button"
+                  className="shrink-0 rounded-sm p-0.5 text-muted-foreground opacity-0 group-data-[selected=true]:opacity-100 hover:text-foreground hover:opacity-100 transition-opacity"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const next = recents.filter((r) => r !== q);
+                    setRecents(next);
+                    if (next.length === 0) {
+                      clearRecentSearches();
+                    } else {
+                      localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+                    }
+                  }}
+                >
+                  <X className="h-3 w-3" />
+                </button>
               </CommandItem>
             ))}
-            <CommandItem
-              value="__clear_recent__"
-              onSelect={() => {
-                clearRecentSearches();
-                setRecents([]);
-              }}
-            >
-              <X className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <span className="text-sm text-muted-foreground">Clear recent searches</span>
-            </CommandItem>
           </CommandGroup>
         )}
-        {query && filtered.length === 0 && !loading && !unavailable ? (
+        {query && filtered.length === 0 && !loading ? (
           <CommandEmpty>
             <div className="text-center py-6">
               <p className="text-sm text-muted-foreground">No results found.</p>
-              <p className="text-xs text-muted-foreground mt-1">Try broader terms, check spelling, or switch to {mode === "fts" ? "semantic" : "full-text"} search.</p>
+              <p className="text-xs text-muted-foreground mt-1">Try broader terms or check spelling.</p>
             </div>
           </CommandEmpty>
         ) : null}
         {filtered.map((r) => (
           <CommandItem
-            key={r.kind + ":" + r.path}
+            key={r.path}
             value={r.path}
             onSelect={() => handleSelect(r.path)}
           >
@@ -344,9 +330,7 @@ export function KiwiSearch({ open, onOpenChange, onSelect, tree, initialQuery, h
               {r.snippet && (
                 <div
                   className="kiwi-search-snippet text-xs text-muted-foreground mt-0.5 line-clamp-2"
-                  dangerouslySetInnerHTML={{
-                    __html: r.kind === "semantic" ? highlightTerms(r.snippet, query) : escapeHtml(r.snippet),
-                  }}
+                  dangerouslySetInnerHTML={{ __html: r.snippet }}
                 />
               )}
             </div>
@@ -412,12 +396,10 @@ function ModeChip({
   active,
   onClick,
   label,
-  icon,
 }: {
   active: boolean;
   onClick: () => void;
   label: string;
-  icon?: React.ReactNode;
 }) {
   return (
     <button
@@ -431,7 +413,6 @@ function ModeChip({
           : "bg-transparent text-muted-foreground border-border hover:text-foreground hover:border-foreground/40"
       )}
     >
-      {icon}
       {label}
     </button>
   );
