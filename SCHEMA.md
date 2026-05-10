@@ -74,8 +74,16 @@ durable pages over raw episodes when both exist.
 
 ## Conventions
 
-- **Wiki links** — use `\[[page-name]]` format; escape with backslash to prevent lint errors
-- Template examples in code blocks use angle-bracket syntax like `[[pages/<slug>]]` — these are placeholders, not real links
+- **Wiki links** — use backslash to escape: `\[[page-name]]`
+- Examples in code blocks:
+
+```
+Ingest: [[pages/my-topic]]
+Remember: [[episodes/session-01]]
+Related: [[another-page]]
+```
+
+These are syntax examples — the angle-bracket forms like `pages/<slug>` and `episodes/<file>` are templates, not real links.
 - Keep pages focused — one concept per page
 - Split pages over 300 lines
 - Use YAML frontmatter for all structured metadata
