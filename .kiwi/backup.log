@@ -1,0 +1,231 @@
+Error: no backup remote configured — pass --remote or set [backup] remote in .kiwi/config.toml
+Usage:
+  kiwifs backup [flags]
+
+Examples:
+  kiwifs backup --root /data/knowledge
+  kiwifs backup --root /data/knowledge --remote git@github.com:user/kb.git
+
+Flags:
+      --branch string   branch to push (default: current branch)
+  -h, --help            help for backup
+      --remote string   git remote URL (overrides config)
+  -r, --root string     knowledge root directory (default "./knowledge")
+
+no backup remote configured — pass --remote or set [backup] remote in .kiwi/config.toml
+Error: no backup remote configured — pass --remote or set [backup] remote in .kiwi/config.toml
+Usage:
+  kiwifs backup [flags]
+
+Examples:
+  kiwifs backup --root /data/knowledge
+  kiwifs backup --root /data/knowledge --remote git@github.com:user/kb.git
+
+Flags:
+      --branch string   branch to push (default: current branch)
+  -h, --help            help for backup
+      --remote string   git remote URL (overrides config)
+  -r, --root string     knowledge root directory (default "./knowledge")
+
+no backup remote configured — pass --remote or set [backup] remote in .kiwi/config.toml
+Error: no backup remote configured — pass --remote or set [backup] remote in .kiwi/config.toml
+Usage:
+  kiwifs backup [flags]
+
+Examples:
+  kiwifs backup --root /data/knowledge
+  kiwifs backup --root /data/knowledge --remote git@github.com:user/kb.git
+
+Flags:
+      --branch string   branch to push (default: current branch)
+  -h, --help            help for backup
+      --remote string   git remote URL (overrides config)
+  -r, --root string     knowledge root directory (default "./knowledge")
+
+no backup remote configured — pass --remote or set [backup] remote in .kiwi/config.toml
+Error: no backup remote configured — pass --remote or set [backup] remote in .kiwi/config.toml
+Usage:
+  kiwifs backup [flags]
+
+Examples:
+  kiwifs backup --root /data/knowledge
+  kiwifs backup --root /data/knowledge --remote git@github.com:user/kb.git
+
+Flags:
+      --branch string   branch to push (default: current branch)
+  -h, --help            help for backup
+      --remote string   git remote URL (overrides config)
+  -r, --root string     knowledge root directory (default "./knowledge")
+
+no backup remote configured — pass --remote or set [backup] remote in .kiwi/config.toml
+Error: no backup remote configured — pass --remote or set [backup] remote in .kiwi/config.toml
+Usage:
+  kiwifs backup [flags]
+
+Examples:
+  kiwifs backup --root /data/knowledge
+  kiwifs backup --root /data/knowledge --remote git@github.com:user/kb.git
+
+Flags:
+      --branch string   branch to push (default: current branch)
+  -h, --help            help for backup
+      --remote string   git remote URL (overrides config)
+  -r, --root string     knowledge root directory (default "./knowledge")
+
+no backup remote configured — pass --remote or set [backup] remote in .kiwi/config.toml
+Error: no backup remote configured — pass --remote or set [backup] remote in .kiwi/config.toml
+Usage:
+  kiwifs backup [flags]
+
+Examples:
+  kiwifs backup --root /data/knowledge
+  kiwifs backup --root /data/knowledge --remote git@github.com:user/kb.git
+
+Flags:
+      --branch string   branch to push (default: current branch)
+  -h, --help            help for backup
+      --remote string   git remote URL (overrides config)
+  -r, --root string     knowledge root directory (default "./knowledge")
+
+no backup remote configured — pass --remote or set [backup] remote in .kiwi/config.toml
+Error: no backup remote configured — pass --remote or set [backup] remote in .kiwi/config.toml
+Usage:
+  kiwifs backup [flags]
+
+Examples:
+  kiwifs backup --root /data/knowledge
+  kiwifs backup --root /data/knowledge --remote git@github.com:user/kb.git
+
+Flags:
+      --branch string   branch to push (default: current branch)
+  -h, --help            help for backup
+      --remote string   git remote URL (overrides config)
+  -r, --root string     knowledge root directory (default "./knowledge")
+
+no backup remote configured — pass --remote or set [backup] remote in .kiwi/config.toml
+Error: no backup remote configured — pass --remote or set [backup] remote in .kiwi/config.toml
+Usage:
+  kiwifs backup [flags]
+
+Examples:
+  kiwifs backup --root /data/knowledge
+  kiwifs backup --root /data/knowledge --remote git@github.com:user/kb.git
+
+Flags:
+      --branch string   branch to push (default: current branch)
+  -h, --help            help for backup
+      --remote string   git remote URL (overrides config)
+  -r, --root string     knowledge root directory (default "./knowledge")
+
+no backup remote configured — pass --remote or set [backup] remote in .kiwi/config.toml
+Error: no backup remote configured — pass --remote or set [backup] remote in .kiwi/config.toml
+Usage:
+  kiwifs backup [flags]
+
+Examples:
+  kiwifs backup --root /data/knowledge
+  kiwifs backup --root /data/knowledge --remote git@github.com:user/kb.git
+
+Flags:
+      --branch string   branch to push (default: current branch)
+  -h, --help            help for backup
+      --remote string   git remote URL (overrides config)
+  -r, --root string     knowledge root directory (default "./knowledge")
+
+no backup remote configured — pass --remote or set [backup] remote in .kiwi/config.toml
+Error: no backup remote configured — pass --remote or set [backup] remote in .kiwi/config.toml
+Usage:
+  kiwifs backup [flags]
+
+Examples:
+  kiwifs backup --root /data/knowledge
+  kiwifs backup --root /data/knowledge --remote git@github.com:user/kb.git
+
+Flags:
+      --branch string   branch to push (default: current branch)
+  -h, --help            help for backup
+      --remote string   git remote URL (overrides config)
+  -r, --root string     knowledge root directory (default "./knowledge")
+
+no backup remote configured — pass --remote or set [backup] remote in .kiwi/config.toml
+Error: no backup remote configured — pass --remote or set [backup] remote in .kiwi/config.toml
+Usage:
+  kiwifs backup [flags]
+
+Examples:
+  kiwifs backup --root /data/knowledge
+  kiwifs backup --root /data/knowledge --remote git@github.com:user/kb.git
+
+Flags:
+      --branch string   branch to push (default: current branch)
+  -h, --help            help for backup
+      --remote string   git remote URL (overrides config)
+  -r, --root string     knowledge root directory (default "./knowledge")
+
+no backup remote configured — pass --remote or set [backup] remote in .kiwi/config.toml
+2026/05/21 03:00:01 backup: push failed: git [push backup master]: exit status 128
+fatal: 'backup' does not appear to be a git repository
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+Error: git [push backup master]: exit status 128
+fatal: 'backup' does not appear to be a git repository
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+
+Usage:
+  kiwifs backup [flags]
+
+Examples:
+  kiwifs backup --root /data/knowledge
+  kiwifs backup --root /data/knowledge --remote git@github.com:user/kb.git
+
+Flags:
+      --branch string   branch to push (default: current branch)
+  -h, --help            help for backup
+      --remote string   git remote URL (overrides config)
+  -r, --root string     knowledge root directory (default "./knowledge")
+
+git [push backup master]: exit status 128
+fatal: 'backup' does not appear to be a git repository
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+
+2026/05/22 03:00:01 backup: push failed: git [push backup master]: exit status 128
+fatal: 'backup' does not appear to be a git repository
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+Error: git [push backup master]: exit status 128
+fatal: 'backup' does not appear to be a git repository
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+
+Usage:
+  kiwifs backup [flags]
+
+Examples:
+  kiwifs backup --root /data/knowledge
+  kiwifs backup --root /data/knowledge --remote git@github.com:user/kb.git
+
+Flags:
+      --branch string   branch to push (default: current branch)
+  -h, --help            help for backup
+      --remote string   git remote URL (overrides config)
+  -r, --root string     knowledge root directory (default "./knowledge")
+
+git [push backup master]: exit status 128
+fatal: 'backup' does not appear to be a git repository
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+
